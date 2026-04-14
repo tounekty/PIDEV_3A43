@@ -6,6 +6,8 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -17,6 +19,9 @@
     <padding>
         <Insets top="8" right="8" bottom="8" left="8" />
     </padding>
+    <fx:define>
+        <ToggleGroup fx:id="subjectStatusGroup" />
+    </fx:define>
     <children>
         <ScrollPane fitToWidth="true" pannable="true" hbarPolicy="NEVER" style="-fx-background-color:transparent; -fx-background:transparent;" VBox.vgrow="ALWAYS">
             <content>
@@ -27,6 +32,7 @@
                     <children>
                         <Label fx:id="subjectFormTitle" text="Nouveau sujet" style="-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;" />
                         <Label text="Creer ou modifier un sujet du forum." style="-fx-text-fill:#637a97; -fx-font-size:13px;" />
+                        <Label fx:id="subjectErrorLabel" text="" visible="false" managed="false" style="-fx-text-fill: #c63d48; -fx-font-size: 12px; -fx-font-weight: bold;" />
                         <GridPane hgap="14" vgap="14">
                             <columnConstraints>
                                 <ColumnConstraints minWidth="120" />
@@ -39,14 +45,17 @@
                                 <Label text="Description" GridPane.rowIndex="1" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
                                 <TextArea fx:id="subjectDescriptionArea" promptText="Description" prefRowCount="4" GridPane.rowIndex="1" GridPane.columnIndex="1" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
 
-                                <Label text="Categorie" GridPane.rowIndex="2" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
-                                <TextField fx:id="subjectCategoryField" promptText="Categorie" GridPane.rowIndex="2" GridPane.columnIndex="1" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
+                                <Label text="Statut" GridPane.rowIndex="2" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
+                                <HBox spacing="10" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                                    <children>
+                                        <ToggleButton fx:id="subjectStatusOpenButton" text="Ouvert" toggleGroup="$subjectStatusGroup" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 10 14 10 14;" />
+                                        <ToggleButton fx:id="subjectStatusClosedButton" text="Ferme" toggleGroup="$subjectStatusGroup" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 10 14 10 14;" />
+                                        <ToggleButton fx:id="subjectStatusArchivedButton" text="Archive" toggleGroup="$subjectStatusGroup" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 10 14 10 14;" />
+                                    </children>
+                                </HBox>
 
-                                <Label text="Statut" GridPane.rowIndex="3" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
-                                <TextField fx:id="subjectStatusField" promptText="Statut (ex: ouvert, ferme, archive)" GridPane.rowIndex="3" GridPane.columnIndex="1" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
-
-                                <Label text="Image" GridPane.rowIndex="4" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
-                                <VBox spacing="8" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                                <Label text="Image" GridPane.rowIndex="3" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
+                                <VBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
                                     <children>
                                         <HBox spacing="10">
                                             <TextField fx:id="subjectImageUrlField" promptText="Chemin image" editable="false" HBox.hgrow="ALWAYS" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
@@ -58,25 +67,16 @@
                                     </children>
                                 </VBox>
 
-                                <Label text="Options" GridPane.rowIndex="5" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
-                                <HBox spacing="12" GridPane.rowIndex="5" GridPane.columnIndex="1">
+                                <Label text="Options" GridPane.rowIndex="4" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
+                                <HBox spacing="12" GridPane.rowIndex="4" GridPane.columnIndex="1">
                                     <children>
                                         <CheckBox fx:id="subjectPinnedCheck" text="Epingler" />
                                         <CheckBox fx:id="subjectAnonymousCheck" text="Poster en anonyme" />
                                     </children>
                                 </HBox>
-
-                                <Label text="Fichier" GridPane.rowIndex="6" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
-                                <VBox spacing="6" GridPane.rowIndex="6" GridPane.columnIndex="1">
-                                    <children>
-                                        <HBox spacing="10">
-                                            <TextField fx:id="subjectAttachmentPathField" editable="false" HBox.hgrow="ALWAYS" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
-                                            <Button text="Parcourir" onAction="#handleSubjectAttachmentBrowse" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
-                                            <Button text="Effacer" onAction="#handleSubjectAttachmentClear" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
-                                        </HBox>
-                                        <Label fx:id="subjectAttachmentMeta" text="Aucun fichier" style="-fx-text-fill:#637a97; -fx-font-size:13px;" />
-                                    </children>
-                                </VBox>
+                                <Label text="Cochez pour epingler le sujet ou publier en anonyme."
+                                       GridPane.rowIndex="5" GridPane.columnIndex="1"
+                                       style="-fx-text-fill:#637a97; -fx-font-size:12px;" />
                             </children>
                         </GridPane>
                         <HBox spacing="12">

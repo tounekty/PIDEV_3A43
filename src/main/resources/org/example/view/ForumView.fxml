@@ -23,6 +23,7 @@
                     </padding>
                     <children>
                         <Label fx:id="forumTitle" text="Forum" style="-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;" />
+                        <Label fx:id="forumErrorLabel" text="" visible="false" managed="false" style="-fx-text-fill: #c63d48; -fx-font-size: 12px; -fx-font-weight: bold;" />
                         <HBox spacing="12" alignment="CENTER_LEFT">
                             <TextField fx:id="forumSearchField" promptText="Recherche par titre, categorie, statut..." style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
                             <ComboBox fx:id="forumSortField" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 6 10 6 10;" />

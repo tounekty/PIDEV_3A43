@@ -117,9 +117,12 @@ public class Main extends Application {
     @FXML private TextField forumSearchField;
     @FXML private ComboBox<String> forumSortField;
     @FXML private Label forumTitle;
+    @FXML private Label forumErrorLabel;
     private Label forumSubtitle;
     @FXML private Label messagesTitle;
+    @FXML private Label messagesErrorLabel;
     @FXML private Label subjectFormTitle;
+    @FXML private Label subjectErrorLabel;
     @FXML private VBox statsBox;
 
     private ForumSubject editingSubject;
@@ -127,23 +130,21 @@ public class Main extends Application {
 
     @FXML private TextField subjectTitleField;
     @FXML private TextArea subjectDescriptionArea;
-    @FXML private TextField subjectCategoryField;
-    @FXML private TextField subjectStatusField;
+    @FXML private ToggleGroup subjectStatusGroup;
+    @FXML private ToggleButton subjectStatusOpenButton;
+    @FXML private ToggleButton subjectStatusClosedButton;
+    @FXML private ToggleButton subjectStatusArchivedButton;
     @FXML private TextField subjectImageUrlField;
     @FXML private Label subjectImageMeta;
     @FXML private ImageView subjectImagePreview;
     @FXML private CheckBox subjectPinnedCheck;
     @FXML private CheckBox subjectAnonymousCheck;
-    @FXML private TextField subjectAttachmentPathField;
-    @FXML private Label subjectAttachmentMeta;
     @FXML private Button subjectSaveButton;
     @FXML private Button subjectCancelButton;
     @FXML private TextArea messageContentArea;
     @FXML private CheckBox messageAnonymousCheck;
     @FXML private TextField messageAttachmentPathField;
     @FXML private Label messageAttachmentMeta;
-    private String subjectAttachmentMimeType;
-    private Long subjectAttachmentSize;
     private String messageAttachmentMimeType;
     private Long messageAttachmentSize;
 
@@ -343,6 +344,7 @@ public class Main extends Application {
     }
 
     private void initForumPage() {
+        clearInlineError(forumErrorLabel);
         if (forumListView != null) {
             forumListView.setCellFactory(v -> new ForumSubjectCell());
         }
@@ -367,11 +369,44 @@ public class Main extends Application {
     }
 
     private void initSubjectFormPage() {
-        if (subjectAttachmentPathField != null) {
-            subjectAttachmentPathField.setEditable(false);
-        }
         if (subjectImageUrlField != null) {
             subjectImageUrlField.setEditable(false);
+        }
+        initSubjectStatusButtons();
+    }
+
+    private void initSubjectStatusButtons() {
+        if (subjectStatusOpenButton == null || subjectStatusClosedButton == null || subjectStatusArchivedButton == null) {
+            return;
+        }
+        if (subjectStatusGroup == null) {
+            subjectStatusGroup = new ToggleGroup();
+        }
+        subjectStatusOpenButton.setToggleGroup(subjectStatusGroup);
+        subjectStatusClosedButton.setToggleGroup(subjectStatusGroup);
+        subjectStatusArchivedButton.setToggleGroup(subjectStatusGroup);
+        if (subjectStatusGroup.getSelectedToggle() == null) {
+            subjectStatusOpenButton.setSelected(true);
+        }
+        subjectStatusGroup.selectedToggleProperty().addListener((obs, oldValue, newValue) -> applyStatusButtonStyles());
+        applyStatusButtonStyles();
+    }
+
+    private void applyStatusButtonStyles() {
+        if (subjectStatusOpenButton == null || subjectStatusClosedButton == null || subjectStatusArchivedButton == null) {
+            return;
+        }
+        styleToggleButton(subjectStatusOpenButton);
+        styleToggleButton(subjectStatusClosedButton);
+        styleToggleButton(subjectStatusArchivedButton);
+    }
+
+    private void styleToggleButton(ToggleButton button) {
+        if (button == null) return;
+        if (button.isSelected()) {
+            button.setStyle(PRIMARY);
+        } else {
+            button.setStyle(SECONDARY);
         }
     }
 
@@ -382,6 +417,7 @@ public class Main extends Application {
     }
 
     private void initMessagesPage() {
+        clearInlineError(messagesErrorLabel);
         if (messageListView != null) {
             messageListView.setCellFactory(v -> new ForumMessageCell());
         }
@@ -529,16 +565,6 @@ public class Main extends Application {
     @FXML
     private void handleSubjectImageClear() {
         clearSubjectImage();
-    }
-
-    @FXML
-    private void handleSubjectAttachmentBrowse() {
-        chooseSubjectAttachment();
-    }
-
-    @FXML
-    private void handleSubjectAttachmentClear() {
-        clearSubjectAttachment();
     }
 
     @FXML
@@ -840,26 +866,30 @@ public class Main extends Application {
             String query = forumSearchField == null ? null : forumSearchField.getText().trim();
             String sortBy = forumSortField == null ? null : forumSortField.getValue();
             forumListView.getItems().setAll(forumService.getSubjects(query, sortBy));
+            clearInlineError(forumErrorLabel);
         } catch (SQLException e) {
             forumListView.getItems().clear();
-            showError("Chargement du forum impossible", e.getMessage());
+            setInlineError(forumErrorLabel, "Chargement du forum impossible: " + e.getMessage());
         }
     }
 
     private void loadMessages() {
         if (currentSubject == null) {
             messageListView.getItems().clear();
+            clearInlineError(messagesErrorLabel);
             return;
         }
         try {
             messageListView.getItems().setAll(forumMessageService.getMessagesBySubject(currentSubject.getId()));
+            clearInlineError(messagesErrorLabel);
         } catch (SQLException e) {
             messageListView.getItems().clear();
-            showError("Chargement des commentaires impossible", e.getMessage());
+            setInlineError(messagesErrorLabel, "Chargement des commentaires impossible: " + e.getMessage());
         }
     }
 
     private void showSubjectForm(ForumSubject subject) {
+        clearInlineError(subjectErrorLabel);
         editingSubject = subject;
         boolean editing = subject != null;
         subjectSaveButton.setText(editing ? "Enregistrer" : "Publier");
@@ -876,61 +906,72 @@ public class Main extends Application {
 
         subjectTitleField.setText(subject.getTitre());
         subjectDescriptionArea.setText(subject.getDescription() == null ? "" : subject.getDescription());
-        subjectCategoryField.setText(subject.getCategory() == null ? "" : subject.getCategory());
-        subjectStatusField.setText(subject.getStatus() == null ? "" : subject.getStatus());
         subjectImageUrlField.setText(subject.getImageUrl() == null ? "" : subject.getImageUrl());
         updateImagePreview(subjectImageUrlField.getText(), subjectImagePreview, subjectImageMeta);
         subjectPinnedCheck.setSelected(subject.isPinned());
         subjectAnonymousCheck.setSelected(subject.isAnonymous());
-
-        subjectAttachmentPathField.setText(subject.getAttachmentPath() == null ? "" : subject.getAttachmentPath());
-        subjectAttachmentMimeType = subject.getAttachmentMimeType();
-        subjectAttachmentSize = subject.getAttachmentSize();
-        subjectAttachmentMeta.setText(attachmentMeta(subjectAttachmentMimeType, subjectAttachmentSize));
+        selectStatusButton(subject.getStatus());
 
         applySubjectPermissions();
     }
 
     private void resetSubjectForm() {
+        clearInlineError(subjectErrorLabel);
         if (subjectFormTitle != null) {
             subjectFormTitle.setText("Nouveau sujet");
         }
         subjectTitleField.clear();
         subjectDescriptionArea.clear();
-        subjectCategoryField.clear();
-        subjectStatusField.clear();
+        selectStatusButton(null);
         subjectImageUrlField.clear();
         clearSubjectImage();
         subjectPinnedCheck.setSelected(false);
         subjectAnonymousCheck.setSelected(false);
-        clearSubjectAttachment();
         applySubjectPermissions();
     }
 
     private void applySubjectPermissions() {
         boolean admin = currentUser != null && currentUser.isAdmin();
         subjectPinnedCheck.setDisable(!admin);
-        subjectStatusField.setDisable(!admin);
     }
 
     private void saveSubject() {
-        if (currentUser == null) { showError("Acces refuse", "Connexion requise."); return; }
-        if (subjectTitleField.getText().isBlank()) { showWarning("Le titre du sujet est obligatoire."); return; }
+        if (currentUser == null) { setInlineError(subjectErrorLabel, "Connexion requise."); return; }
+        String title = subjectTitleField.getText() == null ? "" : subjectTitleField.getText().trim();
+        String description = subjectDescriptionArea.getText() == null ? "" : subjectDescriptionArea.getText().trim();
+        if (title.isBlank()) { setInlineError(subjectErrorLabel, "Le titre du sujet est obligatoire."); return; }
+        if (title.length() < 4) { setInlineError(subjectErrorLabel, "Le titre doit contenir au moins 4 caracteres."); return; }
+        if (description.isBlank()) { setInlineError(subjectErrorLabel, "La description est obligatoire."); return; }
+        if (description.length() < 11) { setInlineError(subjectErrorLabel, "La description doit contenir au moins 11 caracteres."); return; }
+        String status = getSelectedStatusValue();
+        if (status == null) { setInlineError(subjectErrorLabel, "Veuillez choisir un statut (ouvert, ferme ou archive)."); return; }
 
-        if (editingSubject != null && !canEditSubject(editingSubject)) { showError("Acces refuse", "Vous ne pouvez pas modifier ce sujet."); return; }
+        if (editingSubject != null && !canEditSubject(editingSubject)) { setInlineError(subjectErrorLabel, "Vous ne pouvez pas modifier ce sujet."); return; }
+        if (editingSubject == null) {
+            try {
+                for (ForumSubject existing : forumService.getAllSubjects()) {
+                    String existingTitle = existing.getTitre() == null ? "" : existing.getTitre().trim();
+                    String existingDesc = existing.getDescription() == null ? "" : existing.getDescription().trim();
+                    if (existingTitle.equalsIgnoreCase(title) && existingDesc.equalsIgnoreCase(description)) {
+                        setInlineError(subjectErrorLabel, "Un sujet identique existe deja.");
+                        return;
+                    }
+                }
+            } catch (SQLException e) {
+                setInlineError(subjectErrorLabel, "Verification impossible: " + e.getMessage());
+                return;
+            }
+        }
 
         ForumSubject subject = new ForumSubject();
-        subject.setTitre(subjectTitleField.getText().trim());
-        subject.setDescription(subjectDescriptionArea.getText().trim());
+        subject.setTitre(title);
+        subject.setDescription(description);
         subject.setDateCreation(editingSubject == null ? LocalDateTime.now() : editingSubject.getDateCreation());
         subject.setImageUrl(subjectImageUrlField.getText().trim());
         subject.setPinned(subjectPinnedCheck.isSelected());
         subject.setAnonymous(subjectAnonymousCheck.isSelected());
-        subject.setStatus(subjectStatusField.getText().trim());
-        subject.setCategory(subjectCategoryField.getText().trim());
-        subject.setAttachmentPath(subjectAttachmentPathField.getText().trim());
-        subject.setAttachmentMimeType(subjectAttachmentMimeType);
-        subject.setAttachmentSize(subjectAttachmentSize);
+        subject.setStatus(status);
+        subject.setCategory(null);
         subject.setIdUser(currentUser.getId());
 
         try {
@@ -942,16 +983,39 @@ public class Main extends Application {
                 forumService.updateSubject(subject);
                 showInfo("Sujet modifie", "Le sujet a ete mis a jour.");
             }
+            clearInlineError(subjectErrorLabel);
             resetSubjectForm();
             loadForumSubjects();
             showPage(forumPage);
         } catch (SQLException e) {
-            showError("Enregistrement impossible", e.getMessage());
+            setInlineError(subjectErrorLabel, "Enregistrement impossible: " + e.getMessage());
         }
     }
 
+    private void selectStatusButton(String status) {
+        String value = status == null ? "" : status.trim().toLowerCase(Locale.ROOT);
+        if (subjectStatusOpenButton == null || subjectStatusClosedButton == null || subjectStatusArchivedButton == null) {
+            return;
+        }
+        if (value.equals("ferme")) {
+            subjectStatusClosedButton.setSelected(true);
+        } else if (value.equals("archive")) {
+            subjectStatusArchivedButton.setSelected(true);
+        } else {
+            subjectStatusOpenButton.setSelected(true);
+        }
+        applyStatusButtonStyles();
+    }
+
+    private String getSelectedStatusValue() {
+        if (subjectStatusOpenButton != null && subjectStatusOpenButton.isSelected()) return "ouvert";
+        if (subjectStatusClosedButton != null && subjectStatusClosedButton.isSelected()) return "ferme";
+        if (subjectStatusArchivedButton != null && subjectStatusArchivedButton.isSelected()) return "archive";
+        return null;
+    }
+
     private void deleteSubject(ForumSubject subject) {
-        if (!canEditSubject(subject)) { showError("Acces refuse", "Vous ne pouvez pas supprimer ce sujet."); return; }
+        if (!canEditSubject(subject)) { setInlineError(forumErrorLabel, "Vous ne pouvez pas supprimer ce sujet."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setHeaderText("Supprimer le sujet #" + subject.getId());
         alert.setContentText("Confirmer la suppression de " + subject.getTitre() + " ?");
@@ -963,7 +1027,7 @@ public class Main extends Application {
                 loadForumSubjects();
                 showInfo("Suppression reussie", "Sujet supprime.");
             } catch (SQLException e) {
-                showError("Suppression impossible", e.getMessage());
+                setInlineError(forumErrorLabel, "Suppression impossible: " + e.getMessage());
             }
         }
     }
@@ -973,13 +1037,14 @@ public class Main extends Application {
         messagesTitle.setText("Commentaires - " + subject.getTitre());
         resetMessageForm();
         loadMessages();
+        clearInlineError(messagesErrorLabel);
         showPage(messagesPage);
     }
 
     private void saveMessage() {
-        if (currentUser == null) { showError("Acces refuse", "Connexion requise."); return; }
-        if (currentSubject == null) { showWarning("Veuillez selectionner un sujet."); return; }
-        if (messageContentArea.getText().isBlank()) { showWarning("Le commentaire est obligatoire."); return; }
+        if (currentUser == null) { setInlineError(messagesErrorLabel, "Connexion requise."); return; }
+        if (currentSubject == null) { setInlineError(messagesErrorLabel, "Veuillez selectionner un sujet."); return; }
+        if (messageContentArea.getText().isBlank()) { setInlineError(messagesErrorLabel, "Le commentaire est obligatoire."); return; }
 
         ForumMessage message = new ForumMessage();
         message.setContenu(messageContentArea.getText().trim());
@@ -995,13 +1060,14 @@ public class Main extends Application {
             forumMessageService.addMessage(message);
             resetMessageForm();
             loadMessages();
+            clearInlineError(messagesErrorLabel);
         } catch (SQLException e) {
-            showError("Commentaire impossible", e.getMessage());
+            setInlineError(messagesErrorLabel, "Commentaire impossible: " + e.getMessage());
         }
     }
 
     private void deleteMessage(ForumMessage message) {
-        if (!canDeleteMessage(message)) { showError("Acces refuse", "Vous ne pouvez pas supprimer ce commentaire."); return; }
+        if (!canDeleteMessage(message)) { setInlineError(messagesErrorLabel, "Vous ne pouvez pas supprimer ce commentaire."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setHeaderText("Supprimer le commentaire #" + message.getId());
         alert.setContentText("Confirmer la suppression du commentaire ?");
@@ -1011,7 +1077,7 @@ public class Main extends Application {
                 forumMessageService.deleteMessage(message.getId());
                 loadMessages();
             } catch (SQLException e) {
-                showError("Suppression impossible", e.getMessage());
+                setInlineError(messagesErrorLabel, "Suppression impossible: " + e.getMessage());
             }
         }
     }
@@ -1030,25 +1096,6 @@ public class Main extends Application {
     private boolean canDeleteMessage(ForumMessage message) {
         if (currentUser == null) return false;
         return currentUser.isAdmin() || message.getIdUser() == currentUser.getId();
-    }
-
-    private void chooseSubjectAttachment() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Choisir un fichier");
-        File file = chooser.showOpenDialog(primaryStage);
-        if (file != null) {
-            subjectAttachmentPathField.setText(file.getPath());
-            subjectAttachmentMimeType = detectMimeType(file);
-            subjectAttachmentSize = file.length();
-            subjectAttachmentMeta.setText(attachmentMeta(subjectAttachmentMimeType, subjectAttachmentSize));
-        }
-    }
-
-    private void clearSubjectAttachment() {
-        subjectAttachmentPathField.clear();
-        subjectAttachmentMimeType = null;
-        subjectAttachmentSize = null;
-        subjectAttachmentMeta.setText("Aucun fichier");
     }
 
     private void chooseMessageAttachment() {
@@ -1370,6 +1417,20 @@ public class Main extends Application {
     private void showError(String t, String m) { alert(Alert.AlertType.ERROR, t, m); }
     private void showInfo(String t, String m) { alert(Alert.AlertType.INFORMATION, t, m); }
     private void alert(Alert.AlertType type, String title, String message) { Alert a = new Alert(type); a.setHeaderText(title); a.setContentText(message); a.showAndWait(); }
+
+    private void setInlineError(Label label, String message) {
+        if (label == null) return;
+        label.setText(message);
+        label.setVisible(true);
+        label.setManaged(true);
+    }
+
+    private void clearInlineError(Label label) {
+        if (label == null) return;
+        label.setText("");
+        label.setVisible(false);
+        label.setManaged(false);
+    }
 
     private Node imageNode(String path) {
         if (path != null && !path.isBlank()) {

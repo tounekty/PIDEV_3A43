@@ -25,6 +25,7 @@
                     <children>
                         <Label fx:id="messagesTitle" text="Commentaires" style="-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;" />
                         <Label text="Discussion sur le sujet selectionne." style="-fx-text-fill:#637a97; -fx-font-size:13px;" />
+                        <Label fx:id="messagesErrorLabel" text="" visible="false" managed="false" style="-fx-text-fill: #c63d48; -fx-font-size: 12px; -fx-font-weight: bold;" />
                         <ListView fx:id="messageListView" style="-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;" VBox.vgrow="ALWAYS" />
                         <VBox spacing="12">
                             <children>

@@ -129,7 +129,7 @@ public class ForumRepositoryImpl implements ForumRepository {
 
     @Override
     public List<ForumSubject> findAll() throws SQLException {
-        String sql = baseSelect() + " ORDER BY s.pinned DESC, s.date_creation DESC";
+        String sql = baseSelect() + " ORDER BY s.is_pinned DESC, s.date_creation DESC";
         return querySubjects(sql, null);
     }
 
