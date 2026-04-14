@@ -1,8 +1,10 @@
-package org.example;
+package org.example.view;
 
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
@@ -15,18 +17,19 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.example.auth.AppUser;
-import org.example.auth.AuthService;
-import org.example.event.Event;
-import org.example.event.EventService;
-import org.example.forum.ForumMessage;
-import org.example.forum.ForumMessageService;
-import org.example.forum.ForumService;
-import org.example.forum.ForumSubject;
-import org.example.reservation.ReservationRecord;
-import org.example.reservation.ReservationService;
+import org.example.model.User;
+import org.example.model.Event;
+import org.example.model.ForumMessage;
+import org.example.model.ForumSubject;
+import org.example.model.ReservationRecord;
+import org.example.controller.AuthController;
+import org.example.controller.EventController;
+import org.example.controller.ForumMessageController;
+import org.example.controller.ForumController;
+import org.example.controller.ReservationController;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -45,17 +48,19 @@ public class Main extends Application {
     private static final String DANGER = "-fx-background-color: #fff4f4; -fx-text-fill: #c63d48; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #ffd5d8; -fx-padding: 11 16 11 16;";
     private static final String INPUT = "-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;";
 
-    private final EventService eventService = new EventService();
-    private final AuthService authService = new AuthService();
-    private final ReservationService reservationService = new ReservationService();
-    private final ForumService forumService = new ForumService();
-    private final ForumMessageService forumMessageService = new ForumMessageService();
+    private final EventController eventService = new EventController();
+    private final AuthController authService = new AuthController();
+    private final ReservationController reservationService = new ReservationController();
+    private final ForumController forumService = new ForumController();
+    private final ForumMessageController forumMessageService = new ForumMessageController();
     private final Map<Integer, Integer> reservationCounts = new HashMap<>();
     private final Set<Integer> reservedEventIds = new HashSet<>();
+    private VBox homePage;
 
     private BorderPane root;
     private StackPane pageContainer;
     private VBox loginPage;
+    private VBox registerPage;
     private VBox formPage;
     private VBox eventsPage;
     private VBox reservationsPage;
@@ -65,66 +70,78 @@ public class Main extends Application {
     private VBox statsPage;
     private VBox header;
     private Stage primaryStage;
-    private AppUser currentUser;
+    private User currentUser;
     private Event editingEvent;
 
-    private TextField titleField;
-    private TextArea descriptionArea;
-    private TextField locationField;
-    private DatePicker datePicker;
-    private TextField timeField;
-    private TextField capacityField;
-    private ComboBox<String> categoryField;
-    private TextField imageField;
-    private Label eventImageMeta;
-    private ImageView eventImagePreview;
-    private TextField searchField;
-    private ComboBox<String> sortField;
-    private TextField usernameField;
-    private PasswordField passwordField;
+    @FXML private TextField titleField;
+    @FXML private TextArea descriptionArea;
+    @FXML private TextField locationField;
+    @FXML private DatePicker datePicker;
+    @FXML private TextField timeField;
+    @FXML private TextField capacityField;
+    @FXML private ComboBox<String> categoryField;
+    @FXML private TextField imageField;
+    @FXML private Label eventImageMeta;
+    @FXML private ImageView eventImagePreview;
+    @FXML private TextField searchField;
+    @FXML private ComboBox<String> sortField;
+    @FXML private TextField loginUsernameField;
+    @FXML private PasswordField loginPasswordField;
+    @FXML private Label loginErrorLabel;
+    @FXML private TextField registerUsernameField;
+    @FXML private PasswordField registerPasswordField;
+    @FXML private PasswordField registerConfirmPasswordField;
+    @FXML private Label registerErrorLabel;
     private Label userBadge;
-    private Label formTitle;
-    private Label eventsTitle;
-    private Label eventsSubtitle;
-    private Button saveButton;
-    private Button cancelEditButton;
+    @FXML private Label formTitle;
+    @FXML private Label eventsTitle;
+    @FXML private Label eventsSubtitle;
+    @FXML private Label homeEventsCount;
+    @FXML private Label homeForumCount;
+    @FXML private Label homeReservationsCount;
+    @FXML private Label homeEventsIcon;
+    @FXML private Label homeForumIcon;
+    @FXML private Label homeReservationsIcon;
+    @FXML private Button saveButton;
+    @FXML private Button cancelEditButton;
     private Button addHeaderButton;
     private Button eventsHeaderButton;
     private Button reservationsHeaderButton;
     private Button forumHeaderButton;
     private Button statsHeaderButton;
     private Button logoutButton;
-    private ListView<Event> eventListView;
-    private ListView<ReservationRecord> reservationListView;
-    private ListView<ForumSubject> forumListView;
-    private ListView<ForumMessage> messageListView;
-    private TextField forumSearchField;
-    private ComboBox<String> forumSortField;
-    private Label forumTitle;
+    @FXML private ListView<Event> eventListView;
+    @FXML private ListView<ReservationRecord> reservationListView;
+    @FXML private ListView<ForumSubject> forumListView;
+    @FXML private ListView<ForumMessage> messageListView;
+    @FXML private TextField forumSearchField;
+    @FXML private ComboBox<String> forumSortField;
+    @FXML private Label forumTitle;
     private Label forumSubtitle;
-    private Label messagesTitle;
-    private Label subjectFormTitle;
+    @FXML private Label messagesTitle;
+    @FXML private Label subjectFormTitle;
+    @FXML private VBox statsBox;
 
     private ForumSubject editingSubject;
     private ForumSubject currentSubject;
 
-    private TextField subjectTitleField;
-    private TextArea subjectDescriptionArea;
-    private TextField subjectCategoryField;
-    private TextField subjectStatusField;
-    private TextField subjectImageUrlField;
-    private Label subjectImageMeta;
-    private ImageView subjectImagePreview;
-    private CheckBox subjectPinnedCheck;
-    private CheckBox subjectAnonymousCheck;
-    private TextField subjectAttachmentPathField;
-    private Label subjectAttachmentMeta;
-    private Button subjectSaveButton;
-    private Button subjectCancelButton;
-    private TextArea messageContentArea;
-    private CheckBox messageAnonymousCheck;
-    private TextField messageAttachmentPathField;
-    private Label messageAttachmentMeta;
+    @FXML private TextField subjectTitleField;
+    @FXML private TextArea subjectDescriptionArea;
+    @FXML private TextField subjectCategoryField;
+    @FXML private TextField subjectStatusField;
+    @FXML private TextField subjectImageUrlField;
+    @FXML private Label subjectImageMeta;
+    @FXML private ImageView subjectImagePreview;
+    @FXML private CheckBox subjectPinnedCheck;
+    @FXML private CheckBox subjectAnonymousCheck;
+    @FXML private TextField subjectAttachmentPathField;
+    @FXML private Label subjectAttachmentMeta;
+    @FXML private Button subjectSaveButton;
+    @FXML private Button subjectCancelButton;
+    @FXML private TextArea messageContentArea;
+    @FXML private CheckBox messageAnonymousCheck;
+    @FXML private TextField messageAttachmentPathField;
+    @FXML private Label messageAttachmentMeta;
     private String subjectAttachmentMimeType;
     private Long subjectAttachmentSize;
     private String messageAttachmentMimeType;
@@ -140,6 +157,8 @@ public class Main extends Application {
         root.setTop(header);
         pageContainer = new StackPane();
         loginPage = buildLoginPage();
+        registerPage = buildRegisterPage();
+        homePage = buildHomePage();  // Add this line
         formPage = buildFormPage();
         eventsPage = buildEventsPage();
         reservationsPage = buildReservationsPage();
@@ -178,76 +197,76 @@ public class Main extends Application {
     }
 
     private VBox buildLoginPage() {
-        usernameField = input("Nom d'utilisateur");
-        passwordField = new PasswordField(); passwordField.setPromptText("Mot de passe"); passwordField.setStyle(INPUT);
-        GridPane form = formGrid();
-        addRow(form, 0, "Utilisateur", usernameField);
-        addRow(form, 1, "Mot de passe", passwordField);
-        Button loginBtn = button("Se connecter", PRIMARY, e -> attemptLogin());
-        VBox card = card(new Label("Connexion"), new Label("Admin et etudiant utilisent chacun leur acces."), form, loginBtn,
-                small("Comptes demo: admin / admin123   |   etudiant / etud123"));
-        ((Label) card.getChildren().get(0)).setStyle("-fx-text-fill:#10233f; -fx-font-size:26px; -fx-font-weight:800;");
-        ((Label) card.getChildren().get(1)).setStyle("-fx-text-fill:#637a97; -fx-font-size:13px;");
-        card.setMaxWidth(500);
-        VBox page = new VBox(card); page.setAlignment(Pos.CENTER); VBox.setVgrow(page, Priority.ALWAYS);
-        return page;
+        return loadPage("LoginView.fxml");
+    }
+
+    private VBox buildRegisterPage() {
+        return loadPage("RegisterView.fxml");
+    }
+
+    private VBox loadPage(String resource) {
+        try {
+            FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(getClass().getResource(resource), "Missing resource: " + resource));
+            loader.setController(this);
+            return loader.load();
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load " + resource, e);
+        }
     }
 
     private VBox buildFormPage() {
-        formTitle = new Label("Nouvel evenement"); formTitle.setStyle("-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;");
-        titleField = input("Ex: Morning Yoga Session");
-        descriptionArea = new TextArea(); descriptionArea.setPromptText("Description"); descriptionArea.setStyle(INPUT); descriptionArea.setPrefRowCount(4);
-        locationField = input("Ex: Tunis, Lac 2");
-        datePicker = new DatePicker(LocalDate.now().plusDays(1)); datePicker.setStyle(INPUT);
-        timeField = input("10:00");
-        capacityField = input("20");
-        categoryField = new ComboBox<>(FXCollections.observableArrayList("yoga", "wellness", "sport", "meditation"));
-        categoryField.setValue("yoga"); categoryField.setMaxWidth(Double.MAX_VALUE); categoryField.setStyle(INPUT);
-        imageField = input("Chemin image"); imageField.setEditable(false);
-        eventImageMeta = small("Aucune image");
-        eventImagePreview = buildImagePreview();
-        Button imageBrowse = button("Parcourir", SECONDARY, e -> chooseImage());
-        Button imageClear = button("Effacer", SECONDARY, e -> clearImage());
-        HBox imageRow = new HBox(10, imageField, imageBrowse, imageClear); HBox.setHgrow(imageField, Priority.ALWAYS);
-        VBox imageBox = new VBox(8, imageRow, eventImageMeta, eventImagePreview);
-        GridPane form = formGrid();
-        addRow(form, 0, "Titre", titleField); addRow(form, 1, "Description", descriptionArea); addRow(form, 2, "Lieu", locationField);
-        addRow(form, 3, "Date", datePicker); addRow(form, 4, "Heure", timeField); addRow(form, 5, "Capacite", capacityField);
-        addRow(form, 6, "Categorie", categoryField); addRow(form, 7, "Image", imageBox);
-        saveButton = button("Ajouter l'evenement", PRIMARY, e -> saveEvent());
-        cancelEditButton = button("Annuler", SECONDARY, e -> resetForm()); cancelEditButton.setVisible(false); cancelEditButton.setManaged(false);
-        VBox content = card(formTitle, small("Creation et modification reservees a l'admin."), form, new HBox(12, saveButton, cancelEditButton, button("Voir le catalogue", SECONDARY, e -> { loadEvents(); showPage(eventsPage); })));
-        return scrollPage(content);
+        VBox page = loadPage("FormView.fxml");
+        initFormPage();
+        return page;
+    }
+
+    private void initFormPage() {
+        if (categoryField != null && categoryField.getItems().isEmpty()) {
+            categoryField.setItems(FXCollections.observableArrayList("yoga", "wellness", "sport", "meditation"));
+        }
+        if (categoryField != null) {
+            categoryField.setValue("yoga");
+            categoryField.setMaxWidth(Double.MAX_VALUE);
+        }
+        if (datePicker != null && datePicker.getValue() == null) {
+            datePicker.setValue(LocalDate.now().plusDays(1));
+        }
     }
 
     private VBox buildEventsPage() {
-        eventsTitle = new Label("Catalogue des evenements"); eventsTitle.setStyle("-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;");
-        eventsSubtitle = small("L'etudiant consulte les evenements avec photo et peut reserver.");
-        eventListView = new ListView<>(); eventListView.setCellFactory(v -> new EventCell()); eventListView.setStyle("-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;");
-        VBox.setVgrow(eventListView, Priority.ALWAYS);
+        VBox page = loadPage("EventsView.fxml");
+        initEventsPage();
+        return page;
+    }
 
-        searchField = input("Recherche par titre, lieu, categorie...");
-        searchField.textProperty().addListener((obs, oldText, newText) -> loadEvents());
-        searchField.setMaxWidth(320);
-
-        sortField = new ComboBox<>(FXCollections.observableArrayList("Par défaut", "Date", "Capacite", "Categorie", "Lieu"));
-        sortField.setValue("Par défaut");
-        sortField.setOnAction(e -> loadEvents());
-        sortField.setStyle(INPUT);
-        sortField.setMaxWidth(180);
-
-        Button clearButton = button("Effacer", SECONDARY, e -> {
-            searchField.clear(); sortField.setValue("Par défaut"); loadEvents();
-        });
-        HBox controls = new HBox(12, searchField, sortField, clearButton, button("Actualiser", SECONDARY, e -> loadEvents()));
-        controls.setAlignment(Pos.CENTER_LEFT);
-
-        VBox content = card(eventsTitle, eventsSubtitle, controls, eventListView);
-        return scrollPage(content);
+    private void initEventsPage() {
+        if (eventListView != null) {
+            eventListView.setCellFactory(v -> new EventCell());
+        }
+        if (searchField != null) {
+            searchField.textProperty().addListener((obs, oldText, newText) -> loadEvents());
+            searchField.setMaxWidth(320);
+        }
+        if (sortField != null) {
+            if (sortField.getItems().isEmpty()) {
+                sortField.setItems(FXCollections.observableArrayList("Par defaut", "Date", "Capacite", "Categorie", "Lieu"));
+            }
+            sortField.setValue("Par defaut");
+            sortField.setOnAction(e -> loadEvents());
+            sortField.setMaxWidth(180);
+        }
     }
 
     private VBox buildStatsPageGlobal() throws SQLException {
-        VBox statsBox = new VBox(24);
+        VBox page = loadPage("StatsView.fxml");
+        if (statsBox != null) {
+            statsBox.getChildren().clear();
+            populateStatsBox(statsBox);
+        }
+        return page;
+    }
+
+    private void populateStatsBox(VBox statsBox) throws SQLException {
         statsBox.setPadding(new Insets(28));
         statsBox.setStyle("-fx-background-color:transparent;");
 
@@ -262,17 +281,17 @@ public class Main extends Application {
 
         if (!reservationsByCategory.isEmpty()) {
             VBox resBox = new VBox(12);
-            Label resTitle = title("Réservations par catégorie", 16);
+            Label resTitle = title("Reservations par categorie", 16);
             resBox.getChildren().add(resTitle);
 
             javafx.scene.chart.PieChart resPieChart = new javafx.scene.chart.PieChart();
-            resPieChart.setTitle("Réservations");
+            resPieChart.setTitle("Reservations");
             resPieChart.setLegendSide(javafx.geometry.Side.RIGHT);
             resPieChart.setPrefSize(400, 300);
 
             int totalRes = reservationsByCategory.values().stream().mapToInt(Integer::intValue).sum();
             for (Map.Entry<String, Integer> entry : reservationsByCategory.entrySet()) {
-                String cat = entry.getKey().isEmpty() ? "Non catégorisé" : entry.getKey();
+                String cat = entry.getKey().isEmpty() ? "Non categorise" : entry.getKey();
                 int count = entry.getValue();
                 double percentage = totalRes > 0 ? (100.0 * count / totalRes) : 0;
                 resPieChart.getData().add(new javafx.scene.chart.PieChart.Data(cat + " (" + count + ")", percentage));
@@ -283,17 +302,17 @@ public class Main extends Application {
 
         if (!eventsByCategory.isEmpty()) {
             VBox evtBox = new VBox(12);
-            Label evtTitle = title("Événements par catégorie", 16);
+            Label evtTitle = title("Evenements par categorie", 16);
             evtBox.getChildren().add(evtTitle);
 
             javafx.scene.chart.PieChart evtPieChart = new javafx.scene.chart.PieChart();
-            evtPieChart.setTitle("Événements");
+            evtPieChart.setTitle("Evenements");
             evtPieChart.setLegendSide(javafx.geometry.Side.RIGHT);
             evtPieChart.setPrefSize(400, 300);
 
             int totalEvt = eventsByCategory.values().stream().mapToInt(Integer::intValue).sum();
             for (Map.Entry<String, Integer> entry : eventsByCategory.entrySet()) {
-                String cat = entry.getKey().isEmpty() ? "Non catégorisé" : entry.getKey();
+                String cat = entry.getKey().isEmpty() ? "Non categorise" : entry.getKey();
                 int count = entry.getValue();
                 double percentage = totalEvt > 0 ? (100.0 * count / totalEvt) : 0;
                 evtPieChart.getData().add(new javafx.scene.chart.PieChart.Data(cat + " (" + count + ")", percentage));
@@ -303,148 +322,387 @@ public class Main extends Application {
         }
 
         statsBox.getChildren().add(chartsRow);
-
-        VBox content = card(statsBox);
-        return scrollPage(content);
     }
 
     private VBox buildReservationsPage() {
-        reservationListView = new ListView<>(); reservationListView.setCellFactory(v -> new ReservationCell()); reservationListView.setStyle("-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;");
-        VBox.setVgrow(reservationListView, Priority.ALWAYS);
+        VBox page = loadPage("ReservationsView.fxml");
+        initReservationsPage();
+        return page;
+    }
 
-        VBox content = card(title("Reservations des etudiants", 24), small("Admin voit ici qui reserve chaque evenement."), button("Actualiser", SECONDARY, e -> loadReservations()), reservationListView);
-        return scrollPage(content);
+    private void initReservationsPage() {
+        if (reservationListView != null) {
+            reservationListView.setCellFactory(v -> new ReservationCell());
+        }
     }
 
     private VBox buildForumPage() {
-        forumTitle = new Label("Forum"); forumTitle.setStyle("-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;");
-        forumSubtitle = null;
+        VBox page = loadPage("ForumView.fxml");
+        initForumPage();
+        return page;
+    }
 
-        forumListView = new ListView<>(); forumListView.setCellFactory(v -> new ForumSubjectCell());
-        forumListView.setStyle("-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;");
-        VBox.setVgrow(forumListView, Priority.ALWAYS);
-
-        forumSearchField = input("Recherche par titre, categorie, statut...");
-        forumSearchField.textProperty().addListener((obs, oldText, newText) -> loadForumSubjects());
-        forumSearchField.setMaxWidth(320);
-
-        forumSortField = new ComboBox<>(FXCollections.observableArrayList("Par defaut", "Date", "Pinned", "Categorie", "Statut"));
-        forumSortField.setValue("Par defaut");
-        forumSortField.setOnAction(e -> loadForumSubjects());
-        forumSortField.setStyle(INPUT);
-        forumSortField.setMaxWidth(180);
-
-        Button newSubjectButton = button("Nouveau sujet", PRIMARY, e -> { showSubjectForm(null); showPage(subjectFormPage); });
-        Button clearButton = button("Effacer", SECONDARY, e -> { forumSearchField.clear(); forumSortField.setValue("Par defaut"); loadForumSubjects(); });
-        HBox controls = new HBox(12, forumSearchField, forumSortField, clearButton, newSubjectButton, button("Actualiser", SECONDARY, e -> loadForumSubjects()));
-        controls.setAlignment(Pos.CENTER_LEFT);
-
-        VBox content = card(forumTitle, controls, forumListView);
-        return scrollPage(content);
+    private void initForumPage() {
+        if (forumListView != null) {
+            forumListView.setCellFactory(v -> new ForumSubjectCell());
+        }
+        if (forumSearchField != null) {
+            forumSearchField.textProperty().addListener((obs, oldText, newText) -> loadForumSubjects());
+            forumSearchField.setMaxWidth(320);
+        }
+        if (forumSortField != null) {
+            if (forumSortField.getItems().isEmpty()) {
+                forumSortField.setItems(FXCollections.observableArrayList("Par defaut", "Date", "Pinned", "Categorie", "Statut"));
+            }
+            forumSortField.setValue("Par defaut");
+            forumSortField.setOnAction(e -> loadForumSubjects());
+            forumSortField.setMaxWidth(180);
+        }
     }
 
     private VBox buildSubjectFormPage() {
-        subjectFormTitle = new Label("Nouveau sujet"); subjectFormTitle.setStyle("-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;");
+        VBox page = loadPage("SubjectFormView.fxml");
+        initSubjectFormPage();
+        return page;
+    }
 
-        subjectTitleField = input("Titre du sujet");
-        subjectDescriptionArea = new TextArea(); subjectDescriptionArea.setPromptText("Description"); subjectDescriptionArea.setStyle(INPUT); subjectDescriptionArea.setPrefRowCount(4);
-        subjectCategoryField = input("Categorie");
-        subjectStatusField = input("Statut (ex: ouvert, ferme, archive)");
-        subjectImageUrlField = input("Chemin image");
-        subjectImageUrlField.setEditable(false);
-        subjectImageMeta = small("Aucune image");
-        subjectImagePreview = buildImagePreview();
-        Button subjectImageBrowse = button("Parcourir", SECONDARY, e -> chooseSubjectImage());
-        Button subjectImageClear = button("Effacer", SECONDARY, e -> clearSubjectImage());
-        HBox subjectImageRow = new HBox(10, subjectImageUrlField, subjectImageBrowse, subjectImageClear); HBox.setHgrow(subjectImageUrlField, Priority.ALWAYS);
-        VBox subjectImageBox = new VBox(8, subjectImageRow, subjectImageMeta, subjectImagePreview);
-
-        subjectPinnedCheck = new CheckBox("Epingler");
-        subjectAnonymousCheck = new CheckBox("Poster en anonyme");
-
-        subjectAttachmentPathField = new TextField();
-        subjectAttachmentPathField.setEditable(false);
-        subjectAttachmentPathField.setStyle(INPUT);
-        subjectAttachmentMeta = small("Aucun fichier");
-
-        Button browse = button("Parcourir", SECONDARY, e -> chooseSubjectAttachment());
-        Button clear = button("Effacer", SECONDARY, e -> clearSubjectAttachment());
-        HBox attachmentRow = new HBox(10, subjectAttachmentPathField, browse, clear); HBox.setHgrow(subjectAttachmentPathField, Priority.ALWAYS);
-        VBox attachmentBox = new VBox(6, attachmentRow, subjectAttachmentMeta);
-
-        GridPane form = formGrid();
-        addRow(form, 0, "Titre", subjectTitleField);
-        addRow(form, 1, "Description", subjectDescriptionArea);
-        addRow(form, 2, "Categorie", subjectCategoryField);
-        addRow(form, 3, "Statut", subjectStatusField);
-        addRow(form, 4, "Image", subjectImageBox);
-        addRow(form, 5, "Options", new HBox(12, subjectPinnedCheck, subjectAnonymousCheck));
-        addRow(form, 6, "Fichier", attachmentBox);
-
-        subjectSaveButton = button("Publier", PRIMARY, e -> saveSubject());
-        subjectCancelButton = button("Annuler", SECONDARY, e -> { resetSubjectForm(); showPage(forumPage); });
-
-        VBox content = card(subjectFormTitle, small("Creer ou modifier un sujet du forum."), form, new HBox(12, subjectSaveButton, subjectCancelButton));
-        return scrollPage(content);
+    private void initSubjectFormPage() {
+        if (subjectAttachmentPathField != null) {
+            subjectAttachmentPathField.setEditable(false);
+        }
+        if (subjectImageUrlField != null) {
+            subjectImageUrlField.setEditable(false);
+        }
     }
 
     private VBox buildMessagesPage() {
-        messagesTitle = new Label("Commentaires"); messagesTitle.setStyle("-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;");
+        VBox page = loadPage("MessagesView.fxml");
+        initMessagesPage();
+        return page;
+    }
 
-        messageListView = new ListView<>(); messageListView.setCellFactory(v -> new ForumMessageCell());
-        messageListView.setStyle("-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;");
-        VBox.setVgrow(messageListView, Priority.ALWAYS);
-
-        messageContentArea = new TextArea(); messageContentArea.setPromptText("Votre commentaire..."); messageContentArea.setStyle(INPUT); messageContentArea.setPrefRowCount(3);
-        messageAnonymousCheck = new CheckBox("Anonyme");
-        messageAttachmentPathField = new TextField(); messageAttachmentPathField.setEditable(false); messageAttachmentPathField.setStyle(INPUT);
-        messageAttachmentMeta = small("Aucun fichier");
-
-        Button msgBrowse = button("Joindre", SECONDARY, e -> chooseMessageAttachment());
-        Button msgClear = button("Effacer", SECONDARY, e -> clearMessageAttachment());
-        HBox msgAttachRow = new HBox(10, messageAttachmentPathField, msgBrowse, msgClear); HBox.setHgrow(messageAttachmentPathField, Priority.ALWAYS);
-        VBox msgAttachBox = new VBox(6, msgAttachRow, messageAttachmentMeta);
-
-        Button sendButton = button("Publier", PRIMARY, e -> saveMessage());
-        Button backButton = button("Retour au forum", SECONDARY, e -> { loadForumSubjects(); showPage(forumPage); });
-
-        VBox form = new VBox(12,
-                title("Nouveau commentaire", 16),
-                messageContentArea,
-                new HBox(12, messageAnonymousCheck),
-                msgAttachBox,
-                new HBox(12, sendButton, backButton)
-        );
-
-        VBox content = card(messagesTitle, small("Discussion sur le sujet selectionne."), messageListView, form);
-        return scrollPage(content);
+    private void initMessagesPage() {
+        if (messageListView != null) {
+            messageListView.setCellFactory(v -> new ForumMessageCell());
+        }
+        if (messageAttachmentPathField != null) {
+            messageAttachmentPathField.setEditable(false);
+        }
     }
 
     private void initializeDatabase() {
         try {
             authService.initializeUsers();
+            System.out.println("✓ Users initialized");
             eventService.createTableIfNotExists();
+            System.out.println("✓ Events table created");
             reservationService.initializeReservations();
+            System.out.println("✓ Reservations table created");
             forumService.createTableIfNotExists();
+            System.out.println("✓ Forum table created");
             forumMessageService.createTableIfNotExists();
+            System.out.println("✓ Forum messages table created");
         } catch (SQLException e) {
+            System.err.println("Database initialization error: " + e.getMessage());
+            e.printStackTrace();
             showError("Initialisation BDD impossible", e.getMessage());
         }
     }
+    private VBox buildHomePage() {
+        VBox page = loadPage("HomeView.fxml");
+        initHomePage();
+        return page;
+    }
+
+    private void initHomePage() {
+        if (homeEventsIcon != null) homeEventsIcon.setText("📅");
+        if (homeForumIcon != null) homeForumIcon.setText("💬");
+        if (homeReservationsIcon != null) homeReservationsIcon.setText("✅");
+        if (homeEventsCount != null) homeEventsCount.setText("0");
+        if (homeForumCount != null) homeForumCount.setText("0");
+        if (homeReservationsCount != null) homeReservationsCount.setText("0");
+    }
+
+    private void updateHomePageStats() {
+        if (homeEventsCount != null && homeForumCount != null && homeReservationsCount != null) {
+            try {
+                int eventCount = eventService.getAllEvents().size();
+                homeEventsCount.setText(String.valueOf(eventCount));
+
+                int forumSubjectCount = forumService.getAllSubjects().size();
+                homeForumCount.setText(String.valueOf(forumSubjectCount));
+
+                int reservationCount = reservationService.getTotalReservations();
+                homeReservationsCount.setText(String.valueOf(reservationCount));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @FXML
+    private void handleLogin() {
+        attemptLogin();
+    }
+
+    @FXML
+    private void handleShowRegister() {
+        showRegisterPage();
+    }
+
+    @FXML
+    private void handleRegister() {
+        attemptRegister();
+    }
+
+    @FXML
+    private void handleShowLogin() {
+        showLoginPage();
+    }
+
+    @FXML
+    private void handleChooseImage() {
+        chooseImage();
+    }
+
+    @FXML
+    private void handleClearImage() {
+        clearImage();
+    }
+
+    @FXML
+    private void handleSaveEvent() {
+        saveEvent();
+    }
+
+    @FXML
+    private void handleCancelEdit() {
+        resetForm();
+    }
+
+    @FXML
+    private void handleViewCatalog() {
+        loadEvents();
+        showPage(eventsPage);
+    }
+
+    @FXML
+    private void handleClearEventsSearch() {
+        if (searchField != null) searchField.clear();
+        if (sortField != null) sortField.setValue("Par defaut");
+        loadEvents();
+    }
+
+    @FXML
+    private void handleRefreshEvents() {
+        loadEvents();
+    }
+
+    @FXML
+    private void handleRefreshReservations() {
+        loadReservations();
+    }
+
+    @FXML
+    private void handleNewSubject() {
+        showSubjectForm(null);
+        showPage(subjectFormPage);
+    }
+
+    @FXML
+    private void handleClearForumSearch() {
+        if (forumSearchField != null) forumSearchField.clear();
+        if (forumSortField != null) forumSortField.setValue("Par defaut");
+        loadForumSubjects();
+    }
+
+    @FXML
+    private void handleRefreshForum() {
+        loadForumSubjects();
+    }
+
+    @FXML
+    private void handleSubjectImageBrowse() {
+        chooseSubjectImage();
+    }
+
+    @FXML
+    private void handleSubjectImageClear() {
+        clearSubjectImage();
+    }
+
+    @FXML
+    private void handleSubjectAttachmentBrowse() {
+        chooseSubjectAttachment();
+    }
+
+    @FXML
+    private void handleSubjectAttachmentClear() {
+        clearSubjectAttachment();
+    }
+
+    @FXML
+    private void handleSubjectSave() {
+        saveSubject();
+    }
+
+    @FXML
+    private void handleSubjectCancel() {
+        resetSubjectForm();
+        showPage(forumPage);
+    }
+
+    @FXML
+    private void handleMessageAttachmentBrowse() {
+        chooseMessageAttachment();
+    }
+
+    @FXML
+    private void handleMessageAttachmentClear() {
+        clearMessageAttachment();
+    }
+
+    @FXML
+    private void handleMessageSend() {
+        saveMessage();
+    }
+
+    @FXML
+    private void handleMessageBack() {
+        loadForumSubjects();
+        showPage(forumPage);
+    }
+
+    @FXML
+    private void handleGoEvents() {
+        loadEvents();
+        showPage(eventsPage);
+    }
+
+    @FXML
+    private void handleGoForum() {
+        loadForumSubjects();
+        showPage(forumPage);
+    }
 
     private void attemptLogin() {
-        if (usernameField.getText().isBlank() || passwordField.getText().isBlank()) { showWarning("Utilisateur et mot de passe sont obligatoires."); return; }
+        String username = loginUsernameField != null && loginUsernameField.getText() != null
+                ? loginUsernameField.getText().trim()
+                : "";
+        String password = loginPasswordField != null && loginPasswordField.getText() != null
+                ? loginPasswordField.getText().trim()
+                : "";
+
+        // Clear previous error
+        if (loginErrorLabel != null) {
+            loginErrorLabel.setVisible(false);
+            loginErrorLabel.setManaged(false);
+        }
+
+        if (username.isBlank() || password.isBlank()) {
+            if (loginErrorLabel != null) {
+                loginErrorLabel.setText("❌ Tous les champs sont obligatoires.");
+                loginErrorLabel.setVisible(true);
+                loginErrorLabel.setManaged(true);
+            } else {
+                showWarning("Tous les champs sont obligatoires.");
+            }
+            return;
+        }
+
         try {
-            AppUser user = authService.login(usernameField.getText().trim(), passwordField.getText().trim());
-            if (user == null) { showError("Connexion refusee", "Identifiants invalides."); return; }
+            User user = authService.login(username, password);
+            if (user == null) {
+                if (loginErrorLabel != null) {
+                    loginErrorLabel.setText("❌ Nom d'utilisateur ou mot de passe incorrect.");
+                    loginErrorLabel.setVisible(true);
+                    loginErrorLabel.setManaged(true);
+                } else {
+                    showError("Connexion refusee", "Identifiants invalides.");
+                }
+                return;
+            }
+
             currentUser = user;
             applyRole();
             resetForm();
             loadEvents();
             loadReservations();
             loadForumSubjects();
-            showPage(currentUser.isAdmin() ? formPage : eventsPage);
-        } catch (SQLException e) { showError("Connexion impossible", e.getMessage()); }
+            updateHomePageStats();  // Update stats on home page
+
+            // Clear error on success
+            if (loginErrorLabel != null) {
+                loginErrorLabel.setVisible(false);
+                loginErrorLabel.setManaged(false);
+            }
+
+            // Redirect to HOME PAGE instead of formPage or eventsPage
+            showPage(homePage);
+
+        } catch (SQLException e) {
+            String errorMsg = e.getMessage();
+            if (loginErrorLabel != null) {
+                if (errorMsg.contains("requis")) {
+                    loginErrorLabel.setText("❌ Tous les champs sont obligatoires.");
+                } else if (errorMsg.contains("incorrect")) {
+                    loginErrorLabel.setText("❌ Nom d'utilisateur ou mot de passe incorrect.");
+                } else if (errorMsg.contains("banni")) {
+                    loginErrorLabel.setText("❌ Votre compte est banni. Contactez l'administrateur.");
+                } else {
+                    loginErrorLabel.setText("❌ Erreur: " + errorMsg);
+                }
+                loginErrorLabel.setVisible(true);
+                loginErrorLabel.setManaged(true);
+            } else {
+                showError("Connexion impossible", errorMsg);
+            }
+        }
+    }
+    private void attemptRegister() {
+        String username = registerUsernameField != null ? registerUsernameField.getText().trim() : "";
+        String password = registerPasswordField != null ? registerPasswordField.getText() : "";
+        String confirm = registerConfirmPasswordField != null ? registerConfirmPasswordField.getText() : "";
+
+        if (registerErrorLabel != null) {
+            registerErrorLabel.setVisible(false);
+            registerErrorLabel.setManaged(false);
+        }
+
+        if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
+            setRegisterError("❌ Tous les champs sont obligatoires.");
+            return;
+        }
+
+        if (password.length() < 6) {
+            setRegisterError("❌ Le mot de passe doit contenir au moins 6 caractères.");
+            return;
+        }
+
+        if (!password.equals(confirm)) {
+            setRegisterError("❌ Les mots de passe ne correspondent pas.");
+            return;
+        }
+
+        try {
+            authService.register(username, password, "ETUDIANT");
+            showInfo("Inscription réussie", "Votre compte a été créé avec succès.");
+            showLoginPage();
+        } catch (SQLException ex) {
+            String msg = ex.getMessage();
+            if (msg != null && msg.contains("existe déjà")) {
+                setRegisterError("❌ Ce nom d'utilisateur existe déjà.");
+            } else {
+                setRegisterError("❌ Erreur: " + msg);
+            }
+        }
+    }
+
+    private void setRegisterError(String message) {
+        if (registerErrorLabel == null) return;
+        registerErrorLabel.setText(message);
+        registerErrorLabel.setVisible(true);
+        registerErrorLabel.setManaged(true);
     }
 
     private void applyRole() {
@@ -462,14 +720,84 @@ public class Main extends Application {
     }
 
     private void showLoginPage() {
-        for (Node n : List.of(userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, forumHeaderButton, statsHeaderButton, logoutButton)) { n.setVisible(false); n.setManaged(false); }
+        if (loginUsernameField != null) loginUsernameField.clear();
+        if (loginPasswordField != null) loginPasswordField.clear();
+        if (loginErrorLabel != null) {
+            loginErrorLabel.setVisible(false);
+            loginErrorLabel.setManaged(false);
+        }
+        if (registerErrorLabel != null) {
+            registerErrorLabel.setVisible(false);
+            registerErrorLabel.setManaged(false);
+        }
+        for (Node n : List.of(userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, forumHeaderButton, statsHeaderButton, logoutButton)) {
+            if (n != null) {
+                n.setVisible(false);
+                n.setManaged(false);
+            }
+        }
         showPage(loginPage);
     }
 
+    private void showRegisterPage() {
+        if (registerErrorLabel != null) {
+            registerErrorLabel.setVisible(false);
+            registerErrorLabel.setManaged(false);
+        }
+        if (registerUsernameField != null) registerUsernameField.clear();
+        if (registerPasswordField != null) registerPasswordField.clear();
+        if (registerConfirmPasswordField != null) registerConfirmPasswordField.clear();
+        showPage(registerPage);
+    }
+
     private void logout() {
-        currentUser = null; editingEvent = null; editingSubject = null; currentSubject = null;
-        reservedEventIds.clear(); reservationCounts.clear();
-        usernameField.clear(); passwordField.clear(); resetForm(); showLoginPage();
+        // Clear current user
+        currentUser = null;
+
+        // Clear editing references
+        editingEvent = null;
+        editingSubject = null;
+        currentSubject = null;
+
+        // Clear data collections
+        reservedEventIds.clear();
+        reservationCounts.clear();
+
+        // Clear form fields
+        if (loginUsernameField != null) loginUsernameField.clear();
+        if (loginPasswordField != null) loginPasswordField.clear();
+        if (registerUsernameField != null) registerUsernameField.clear();
+        if (registerPasswordField != null) registerPasswordField.clear();
+        if (registerConfirmPasswordField != null) registerConfirmPasswordField.clear();
+
+        // Clear error labels
+        if (loginErrorLabel != null) {
+            loginErrorLabel.setVisible(false);
+            loginErrorLabel.setManaged(false);
+        }
+        if (registerErrorLabel != null) {
+            registerErrorLabel.setVisible(false);
+            registerErrorLabel.setManaged(false);
+        }
+
+        // Hide all header buttons
+        for (Node n : List.of(userBadge, addHeaderButton, eventsHeaderButton,
+                reservationsHeaderButton, forumHeaderButton,
+                statsHeaderButton, logoutButton)) {
+            if (n != null) {
+                n.setVisible(false);
+                n.setManaged(false);
+            }
+        }
+
+        // Clear the page container and show login page
+        if (pageContainer != null) {
+            pageContainer.getChildren().clear();
+            pageContainer.getChildren().setAll(loginPage);
+        }
+
+        // Force refresh of login page
+        showLoginPage();
     }
 
     private void saveEvent() {
@@ -779,7 +1107,7 @@ public class Main extends Application {
         if (!categoryStats.isEmpty()) {
             Label catTitle = title("Reservations par categorie", 16);
             statsBox.getChildren().add(catTitle);
-            
+
             ObservableList<PieChart.Data> categoryData = FXCollections.observableArrayList();
             for (Map.Entry<String, Map<String, Integer>> entry : categoryStats.entrySet()) {
                 int res = entry.getValue().get("reservations");
@@ -815,7 +1143,7 @@ public class Main extends Application {
             statsBox.getChildren().add(eventTitle);
             VBox eventBox = new VBox(10);
             eventBox.setStyle("-fx-background-color:transparent;");
-            
+
             for (Map<String, Object> row : eventStats) {
                 String titre = (String) row.get("titre");
                 int cap = (int) row.get("capacite");
@@ -854,32 +1182,32 @@ public class Main extends Application {
 
     private void reserve(Event event) {
         if (currentUser == null || currentUser.isAdmin()) { showError("Acces refuse", "Seul un etudiant peut reserver."); return; }
-        
+
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Confirmer la reservation");
         dialog.setHeaderText("Reservation pour " + event.getTitre());
-        
+
         GridPane form = new GridPane();
         form.setHgap(14);
         form.setVgap(14);
         form.setPadding(new Insets(16));
-        
+
         TextField nomField = new TextField();
         nomField.setPromptText("Nom");
         nomField.setStyle(INPUT);
-        
+
         TextField prenomField = new TextField();
         prenomField.setPromptText("Prenom");
         prenomField.setStyle(INPUT);
-        
+
         TextField telephoneField = new TextField();
         telephoneField.setPromptText("Telephone");
         telephoneField.setStyle(INPUT);
-        
+
         TextField mailField = new TextField();
         mailField.setPromptText("Email");
         mailField.setStyle(INPUT);
-        
+
         Label nomLabel = new Label("Nom");
         nomLabel.setStyle("-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;");
         Label prenomLabel = new Label("Prenom");
@@ -888,7 +1216,7 @@ public class Main extends Application {
         telLabel.setStyle("-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;");
         Label mailLabel = new Label("Email");
         mailLabel.setStyle("-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;");
-        
+
         form.add(nomLabel, 0, 0);
         form.add(nomField, 1, 0);
         form.add(prenomLabel, 0, 1);
@@ -897,32 +1225,32 @@ public class Main extends Application {
         form.add(telephoneField, 1, 2);
         form.add(mailLabel, 0, 3);
         form.add(mailField, 1, 3);
-        
+
         GridPane.setHgrow(nomField, Priority.ALWAYS);
         GridPane.setHgrow(prenomField, Priority.ALWAYS);
         GridPane.setHgrow(telephoneField, Priority.ALWAYS);
         GridPane.setHgrow(mailField, Priority.ALWAYS);
-        
+
         dialog.getDialogPane().setContent(form);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        
+
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             String nom = nomField.getText().trim();
             String prenom = prenomField.getText().trim();
             String telephone = telephoneField.getText().trim();
             String mail = mailField.getText().trim();
-            
+
             if (nom.isBlank() || prenom.isBlank() || telephone.isBlank() || mail.isBlank()) {
                 showWarning("Tous les champs sont obligatoires.");
                 return;
             }
-            
-            try { 
-                reservationService.reserveEvent(event, currentUser.getId()); 
-                showInfo("Reservation confirmee", "Reservation de " + prenom + " " + nom + " pour " + event.getTitre() + " validee."); 
-                loadEvents(); 
-                loadReservations(); 
+
+            try {
+                reservationService.reserveEvent(event, currentUser.getId());
+                showInfo("Reservation confirmee", "Reservation de " + prenom + " " + nom + " pour " + event.getTitre() + " validee.");
+                loadEvents();
+                loadReservations();
             }
             catch (SQLException e) { showError("Reservation impossible", e.getMessage()); }
         }

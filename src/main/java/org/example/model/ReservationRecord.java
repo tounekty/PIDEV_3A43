@@ -1,4 +1,4 @@
-package org.example.reservation;
+package org.example.model;
 
 import java.time.LocalDateTime;
 
