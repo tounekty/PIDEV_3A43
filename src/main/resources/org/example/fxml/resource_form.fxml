@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.controller.ResourceFormController"
+            fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+            styleClass="admin-root" stylesheets="@../css/admin-theme.css">
+        <content>
+        <VBox spacing="12" styleClass="admin-root">
+                <padding>
+                        <Insets top="20" right="20" bottom="20" left="20"/>
+                </padding>
+
+    <VBox spacing="4">
+        <Label text="Formulaire Ressource" styleClass="admin-title"/>
+        <Label text="Créer ou modifier une ressource" styleClass="admin-subtitle"/>
+    </VBox>
+    
+    <!-- Titre -->
+    <Label text="Titre" styleClass="field-label"/>
+    <TextField fx:id="titleField" promptText="Titre de la ressource" styleClass="admin-input"/>
+    
+    <!-- Description -->
+    <Label text="Description" styleClass="field-label"/>
+    <TextArea fx:id="descriptionField" promptText="Description détaillée (min. 10 caractères)" 
+              wrapText="true" prefHeight="100" styleClass="admin-input"/>
+    
+    <!-- Type -->
+    <Label text="Type" styleClass="field-label"/>
+    <ComboBox fx:id="typeCombo" prefWidth="200" styleClass="admin-input"/>
+    
+    <!-- Chemin du fichier -->
+    <Label text="Chemin fichier (optionnel)" styleClass="field-label"/>
+    <TextField fx:id="filePathField" promptText="/uploads/document.pdf" styleClass="admin-input"/>
+    
+    <!-- URL Vidéo -->
+    <Label text="URL Vidéo (optionnel)" styleClass="field-label"/>
+    <TextField fx:id="videoUrlField" promptText="https://www.youtube.com/watch?v=..." styleClass="admin-input"/>
+    
+    <!-- URL Image -->
+    <Label text="URL Image (optionnel)" styleClass="field-label"/>
+    <TextField fx:id="imageUrlField" promptText="https://example.com/image.jpg" styleClass="admin-input"/>
+    
+    <!-- Boutons -->
+    <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-row">
+        <Button fx:id="saveBtn" text="Enregistrer" onAction="#handleSave" styleClass="btn-success"/>
+        <Button fx:id="cancelBtn" text="Annuler" onAction="#handleCancel" styleClass="btn-secondary"/>
+    </HBox>
+    </VBox>
+    </content>
+</ScrollPane>
