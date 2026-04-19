@@ -6,12 +6,15 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.web.WebView?>
 
-<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-    fx:controller="org.example.controller.ResourceDetailController" spacing="12" styleClass="admin-root"
-    stylesheets="@../css/admin-theme.css">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+<ScrollPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="org.example.controller.ResourceDetailController"
+    fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+    styleClass="admin-root" stylesheets="@../css/admin-theme.css">
+    <content>
+    <VBox spacing="12" styleClass="admin-root">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
 
     <VBox spacing="4">
         <Label text="Détail Ressource" styleClass="admin-title"/>
@@ -66,31 +69,8 @@
         <ComboBox fx:id="statusFilterCombo" prefWidth="160" styleClass="admin-input"/>
         <ComboBox fx:id="ratingFilterCombo" prefWidth="170" styleClass="admin-input"/>
         <ComboBox fx:id="sortCommentCombo" prefWidth="220" styleClass="admin-input"/>
-        <Button fx:id="exportCommentBtn" text="Exporter CSV" onAction="#handleExportComments" styleClass="btn-secondary"/>
-        <Button text="Exporter PDF" onAction="#handleExportCommentsPdf" styleClass="btn-secondary"/>
     </HBox>
-    <HBox spacing="10" styleClass="stats-row">
-        <VBox HBox.hgrow="ALWAYS" styleClass="stat-card stat-card-primary">
-            <Label fx:id="commentTotalValueLabel" text="0" styleClass="stat-value"/>
-            <Label text="Total" styleClass="stat-caption"/>
-        </VBox>
-        <VBox HBox.hgrow="ALWAYS" styleClass="stat-card stat-card-warning">
-            <Label fx:id="commentAverageValueLabel" text="0.00" styleClass="stat-value"/>
-            <Label text="Moyenne / 5" styleClass="stat-caption"/>
-        </VBox>
-        <VBox HBox.hgrow="ALWAYS" styleClass="stat-card stat-card-success">
-            <Label fx:id="commentApprovedValueLabel" text="0" styleClass="stat-value"/>
-            <Label text="Approuves" styleClass="stat-caption"/>
-        </VBox>
-        <VBox HBox.hgrow="ALWAYS" styleClass="stat-card stat-card-danger">
-            <Label fx:id="commentPendingValueLabel" text="0" styleClass="stat-value"/>
-            <Label text="En attente" styleClass="stat-caption"/>
-        </VBox>
-    </HBox>
-    <StackPane styleClass="table-card" prefHeight="220">
-        <PieChart fx:id="commentPieChart" legendVisible="true" labelsVisible="true"/>
-    </StackPane>
-    <ListView fx:id="commentaireListView" VBox.vgrow="ALWAYS" styleClass="admin-list"/>
+    <ListView fx:id="commentaireListView" prefHeight="240" VBox.vgrow="ALWAYS" styleClass="admin-list"/>
     
     <!-- Boutons d'action commentaires -->
     <HBox spacing="10" styleClass="actions-row">
@@ -98,4 +78,6 @@
         <Button fx:id="approveCommentBtn" text="Approuver" onAction="#handleApproveComment" styleClass="btn-primary"/>
         <Button fx:id="deleteCommentBtn" text="Supprimer" onAction="#handleDeleteComment" styleClass="btn-danger"/>
     </HBox>
-</VBox>
+    </VBox>
+    </content>
+</ScrollPane>

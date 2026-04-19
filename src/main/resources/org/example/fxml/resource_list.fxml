@@ -61,7 +61,6 @@
     <StackPane styleClass="table-card" VBox.vgrow="ALWAYS">
     <TableView fx:id="resourceTable" VBox.vgrow="ALWAYS" styleClass="admin-table">
         <columns>
-            <TableColumn fx:id="idColumn" text="ID" prefWidth="40"/>
             <TableColumn fx:id="titleColumn" text="Titre" prefWidth="300"/>
             <TableColumn fx:id="typeColumn" text="Type" prefWidth="80"/>
         </columns>

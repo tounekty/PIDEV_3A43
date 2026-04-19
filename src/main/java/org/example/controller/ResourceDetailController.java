@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -14,11 +13,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.example.model.Commentaire;
 import org.example.model.Resource;
 import org.example.service.CommentaireService;
@@ -31,7 +25,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.chart.PieChart;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -48,7 +41,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public class ResourceDetailController {
@@ -66,12 +58,6 @@ public class ResourceDetailController {
     @FXML private ComboBox<String> statusFilterCombo;
     @FXML private ComboBox<String> ratingFilterCombo;
     @FXML private ComboBox<String> sortCommentCombo;
-    @FXML private Label commentTotalValueLabel;
-    @FXML private Label commentAverageValueLabel;
-    @FXML private Label commentApprovedValueLabel;
-    @FXML private Label commentPendingValueLabel;
-    @FXML private PieChart commentPieChart;
-    @FXML private Button exportCommentBtn;
     @FXML private ListView<Commentaire> commentaireListView;
     @FXML private Button addCommentBtn;
     @FXML private Button deleteCommentBtn;
@@ -338,7 +324,6 @@ public class ResourceDetailController {
         filtered.sort(resolveCommentComparator(sortCommentCombo == null ? null : sortCommentCombo.getValue()));
         commentaireList = FXCollections.observableArrayList(filtered);
         commentaireListView.setItems(commentaireList);
-        updateCommentStats(filtered);
     }
 
     private boolean matchesRatingFilter(int rating, String ratingMode) {
@@ -376,157 +361,19 @@ public class ResourceDetailController {
         };
     }
 
-    private void updateCommentStats(List<Commentaire> comments) {
-        int total = comments.size();
-        double average = comments.stream().mapToInt(Commentaire::getRating).average().orElse(0.0);
-        long approved = comments.stream().filter(Commentaire::isApproved).count();
-        long pending = Math.max(0, total - approved);
 
-        commentTotalValueLabel.setText(String.valueOf(total));
-        commentAverageValueLabel.setText(String.format(Locale.ROOT, "%.2f", average));
-        commentApprovedValueLabel.setText(String.valueOf(approved));
-        commentPendingValueLabel.setText(String.valueOf(pending));
 
-        commentPieChart.setTitle("Statut des commentaires");
-        commentPieChart.setData(FXCollections.observableArrayList(
-            new PieChart.Data("Approuves", approved),
-            new PieChart.Data("En attente", pending)
-        ));
-    }
 
-    @FXML
-    private void handleExportComments() {
-        if (resource == null || commentaireList == null || commentaireList.isEmpty()) {
-            showWarning("Aucun commentaire à exporter.");
-            return;
-        }
 
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Exporter les commentaires (CSV)");
-        chooser.setInitialFileName("commentaires-resource-" + resource.getId() + ".csv");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier CSV", "*.csv"));
-        File target = chooser.showSaveDialog(commentaireListView.getScene().getWindow());
-        if (target == null) {
-            return;
-        }
 
-        StringBuilder csv = new StringBuilder("comment_id,auteur,email,note,approved,created_at,contenu\n");
-        for (Commentaire c : commentaireList) {
-            csv.append(c.getId()).append(',')
-                    .append(csvEscape(c.getAuthorName())).append(',')
-                    .append(csvEscape(c.getAuthorEmail())).append(',')
-                    .append(c.getRating()).append(',')
-                    .append(c.isApproved()).append(',')
-                    .append(csvEscape(c.getCreatedAt() == null ? "" : c.getCreatedAt().format(DATE_FMT))).append(',')
-                    .append(csvEscape(c.getContent()))
-                    .append('\n');
-        }
 
-        try {
-            Files.writeString(target.toPath(), csv.toString(), StandardCharsets.UTF_8);
-            showInfo("Export commentaires réussi: " + commentaireList.size() + " commentaire(s)");
-        } catch (IOException e) {
-            showError("Erreur export commentaires: " + e.getMessage());
-        }
-    }
 
-    @FXML
-    private void handleExportCommentsPdf() {
-        if (resource == null || commentaireList == null || commentaireList.isEmpty()) {
-            showWarning("Aucun commentaire a exporter en PDF.");
-            return;
-        }
-
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Exporter les commentaires (PDF)");
-        chooser.setInitialFileName("commentaires-resource-" + resource.getId() + ".pdf");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier PDF", "*.pdf"));
-        File target = chooser.showSaveDialog(commentaireListView.getScene().getWindow());
-        if (target == null) {
-            return;
-        }
-
-        List<String> lines = new ArrayList<>();
-        lines.add("Ressource #" + resource.getId() + " - " + safe(resource.getTitle()));
-        lines.add(" ");
-        for (Commentaire c : commentaireList) {
-            String date = c.getCreatedAt() == null ? "" : c.getCreatedAt().format(DATE_FMT);
-            lines.add(String.format(Locale.ROOT, "C#%d | %s | note %d/5 | %s", c.getId(), safe(c.getAuthorName()), c.getRating(), date));
-            lines.add("  " + safe(c.getContent()));
-            lines.add(" ");
-        }
-
-        try {
-            writeSimplePdf(target, "Export Commentaires", lines);
-            showInfo("Export PDF commentaires reussi: " + commentaireList.size() + " commentaire(s)");
-        } catch (IOException e) {
-            showError("Erreur export PDF commentaires: " + e.getMessage());
-        }
-    }
-
-    private void writeSimplePdf(File target, String title, List<String> lines) throws IOException {
-        try (PDDocument doc = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
-            float margin = 50;
-            float y = page.getMediaBox().getHeight() - margin;
-
-            PDPageContentStream content = new PDPageContentStream(doc, page);
-            content.setFont(PDType1Font.HELVETICA_BOLD, 14);
-            content.beginText();
-            content.newLineAtOffset(margin, y);
-            content.showText(title);
-            content.endText();
-            y -= 24;
-
-            content.setFont(PDType1Font.HELVETICA, 10);
-            for (String line : lines) {
-                if (y < margin) {
-                    content.close();
-                    page = new PDPage(PDRectangle.A4);
-                    doc.addPage(page);
-                    content = new PDPageContentStream(doc, page);
-                    content.setFont(PDType1Font.HELVETICA, 10);
-                    y = page.getMediaBox().getHeight() - margin;
-                }
-
-                String normalized = line == null ? "" : line.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ');
-                int max = 105;
-                for (int i = 0; i < normalized.length(); i += max) {
-                    String part = normalized.substring(i, Math.min(i + max, normalized.length()));
-                    content.beginText();
-                    content.newLineAtOffset(margin, y);
-                    content.showText(part);
-                    content.endText();
-                    y -= 14;
-                    if (y < margin) {
-                        content.close();
-                        page = new PDPage(PDRectangle.A4);
-                        doc.addPage(page);
-                        content = new PDPageContentStream(doc, page);
-                        content.setFont(PDType1Font.HELVETICA, 10);
-                        y = page.getMediaBox().getHeight() - margin;
-                    }
-                }
-                if (normalized.isEmpty()) {
-                    y -= 8;
-                }
-            }
-
-            content.close();
-            doc.save(target);
-        }
-    }
 
     private String safe(String value) {
         return value == null ? "" : value;
     }
 
-    private String csvEscape(String value) {
-        String safeValue = value == null ? "" : value;
-        return '"' + safeValue.replace("\"", "\"\"") + '"';
-    }
-    
+
     @FXML
     private void handleAddComment() {
         try {

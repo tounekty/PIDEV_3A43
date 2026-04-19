@@ -42,7 +42,6 @@ import javafx.stage.Stage;
 public class ResourceListController {
     @FXML private TextField searchField;
     @FXML private TableView<Resource> resourceTable;
-    @FXML private TableColumn<Resource, Integer> idColumn;
     @FXML private TableColumn<Resource, String> titleColumn;
     @FXML private TableColumn<Resource, String> typeColumn;
     @FXML private Button newResourceBtn;
@@ -107,7 +106,6 @@ public class ResourceListController {
     }
 
     private void setupTableColumns() {
-        idColumn.setCellValueFactory(cellData -> Bindings.createObjectBinding(() -> cellData.getValue().getId()));
         titleColumn.setCellValueFactory(cellData -> Bindings.createObjectBinding(() -> cellData.getValue().getTitle()));
         typeColumn.setCellValueFactory(cellData -> Bindings.createObjectBinding(() -> cellData.getValue().getType()));
     }
