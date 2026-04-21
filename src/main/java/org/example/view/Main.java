@@ -1017,7 +1017,7 @@ public class Main extends Application {
     private void deleteSubject(ForumSubject subject) {
         if (!canEditSubject(subject)) { setInlineError(forumErrorLabel, "Vous ne pouvez pas supprimer ce sujet."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Supprimer le sujet #" + subject.getId());
+        alert.setHeaderText("Supprimer le sujet");
         alert.setContentText("Confirmer la suppression de " + subject.getTitre() + " ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
