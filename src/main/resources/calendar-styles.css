@@ -1,0 +1,505 @@
+/* Styles pour le calendrier avancé */
+
+.calendar-container {
+    -fx-background-color: white;
+    -fx-border-radius: 12;
+    -fx-border-color: #d7e7ff;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);
+    -fx-padding: 15;
+}
+
+.calendar-header {
+    -fx-background-color: linear-gradient(to right, #F9FBFF, #E8F4FF);
+    -fx-border-color: #cfe3ff;
+    -fx-border-radius: 8;
+    -fx-padding: 10;
+}
+
+.calendar-title {
+    -fx-font-size: 18;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1c4f96;
+}
+
+.calendar-day-header {
+    -fx-background-color: #F0F7FF;
+    -fx-text-fill: #555;
+    -fx-font-weight: bold;
+    -fx-font-size: 13;
+    -fx-border-radius: 4;
+    -fx-alignment: center;
+    -fx-padding: 10;
+}
+
+.calendar-date-button {
+    -fx-pref-width: 60;
+    -fx-pref-height: 60;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);
+    -fx-alignment: center;
+}
+
+.calendar-date-button:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.calendar-date-button:disabled {
+    -fx-opacity: 0.7;
+    -fx-cursor: not-allowed;
+}
+
+/* Niveaux de disponibilité */
+.availability-low {
+    -fx-background-color: linear-gradient(to bottom, #FF9800, #F57C00);
+    -fx-text-fill: white;
+}
+
+.availability-medium {
+    -fx-background-color: linear-gradient(to bottom, #00BCD4, #0097A7);
+    -fx-text-fill: white;
+}
+
+.availability-high {
+    -fx-background-color: linear-gradient(to bottom, #4CAF50, #388E3C);
+    -fx-text-fill: white;
+}
+
+.availability-full {
+    -fx-background-color: #9E9E9E;
+    -fx-text-fill: white;
+}
+
+/* Date sélectionnée */
+.date-selected {
+    -fx-border-width: 3;
+    -fx-border-color: #1976D2;
+    -fx-effect: dropshadow(gaussian, rgba(25,118,210,0.3), 5, 0, 0, 2);
+}
+
+/* Date d'aujourd'hui */
+.date-today {
+    -fx-border-width: 2;
+    -fx-border-color: #FF5722;
+}
+
+/* Boutons de navigation */
+.nav-button {
+    -fx-font-size: 16;
+    -fx-padding: 8 15;
+    -fx-background-color: white;
+    -fx-border-color: #cfe3ff;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 3, 0, 0, 1);
+}
+
+.nav-button:hover {
+    -fx-background-color: #f0f7ff;
+}
+
+.today-button {
+    -fx-font-size: 12;
+    -fx-padding: 6 12;
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+}
+
+/* Légende */
+.calendar-legend {
+    -fx-background-color: linear-gradient(to right, #F9FBFF, #F0F8FF);
+    -fx-border-color: #D1E3FF;
+    -fx-border-radius: 8;
+    -fx-padding: 10;
+}
+
+.legend-item {
+    -fx-alignment: center;
+    -fx-spacing: 3;
+}
+
+.legend-symbol {
+    -fx-font-size: 14;
+}
+
+.legend-label {
+    -fx-font-size: 11;
+    -fx-text-fill: #666;
+}
+
+/* Panneau d'informations */
+.info-panel {
+    -fx-background-color: white;
+    -fx-border-radius: 8;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+    -fx-padding: 15;
+}
+
+.stats-label {
+    -fx-font-size: 12;
+    -fx-text-fill: #666;
+    -fx-font-weight: bold;
+}
+
+.date-info-label {
+    -fx-font-size: 11;
+    -fx-text-fill: #1976D2;
+    -fx-wrap-text: true;
+}
+
+/* Filtres */
+.filter-combo {
+    -fx-font-size: 12;
+    -fx-pref-width: 180;
+}
+
+.filter-label {
+    -fx-font-size: 12;
+    -fx-text-fill: #666;
+}
+
+/* Onglets */
+.tab-pane {
+    -fx-background-color: transparent;
+    -fx-tab-min-width: 120;
+}
+
+.tab {
+    -fx-background-color: #F0F7FF;
+    -fx-border-color: #d7e7ff;
+    -fx-border-radius: 6 6 0 0;
+}
+
+.tab:selected {
+    -fx-background-color: white;
+    -fx-border-color: #d7e7ff #d7e7ff white #d7e7ff;
+}
+
+.tab-label {
+    -fx-font-size: 13;
+    -fx-font-weight: bold;
+}
+
+/* ============ STYLES POUR CALENDRIER À DEUX MOIS ============ */
+
+.dual-month-container {
+    -fx-background-color: #f5f7fa;
+    -fx-padding: 20;
+    -fx-spacing: 15;
+}
+
+.dual-month-header {
+    -fx-background-color: linear-gradient(to right, #1976D2, #1565C0);
+    -fx-border-radius: 10;
+    -fx-padding: 15;
+    -fx-spacing: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 2);
+}
+
+.dual-month-title {
+    -fx-font-size: 20;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);
+}
+
+.dual-month-nav-button {
+    -fx-font-size: 12;
+    -fx-padding: 8 16;
+    -fx-background-color: #0D47A1;
+    -fx-text-fill: white;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+.dual-month-nav-button:hover {
+    -fx-background-color: #1565C0;
+}
+
+.dual-month-nav-button:pressed {
+    -fx-background-color: #0D47A1;
+}
+
+.month-box {
+    -fx-background-color: white;
+    -fx-border-radius: 10;
+    -fx-border-color: #e0e0e0;
+    -fx-padding: 15;
+    -fx-spacing: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2);
+    -fx-max-width: 380;
+}
+
+.month-label {
+    -fx-font-size: 16;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1976D2;
+    -fx-padding: 10 0 5 0;
+}
+
+.calendar-grid {
+    -fx-hgap: 5;
+    -fx-vgap: 5;
+    -fx-alignment: center;
+}
+
+.calendar-day-label {
+    -fx-font-size: 12;
+    -fx-font-weight: bold;
+    -fx-text-fill: #666;
+    -fx-alignment: center;
+}
+
+.date-button {
+    -fx-min-width: 45;
+    -fx-min-height: 45;
+    -fx-font-size: 13;
+    -fx-cursor: hand;
+    -fx-border-radius: 5;
+    -fx-font-weight: bold;
+}
+
+.date-button-low-availability {
+    -fx-background-color: #FF9800;
+    -fx-text-fill: white;
+}
+
+.date-button-medium-availability {
+    -fx-background-color: #00BCD4;
+    -fx-text-fill: white;
+}
+
+.date-button-full-availability {
+    -fx-background-color: #9E9E9E;
+    -fx-text-fill: white;
+}
+
+.date-button-high-availability {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+}
+
+.date-button-grayed {
+    -fx-background-color: #F5F5F5;
+    -fx-text-fill: #BDBDBD;
+    -fx-cursor: default;
+}
+
+.date-button:hover:not(:disabled) {
+    -fx-opacity: 0.8;
+}
+
+.dual-legend {
+    -fx-background-color: white;
+    -fx-border-radius: 10;
+    -fx-border-color: #e0e0e0;
+    -fx-padding: 15;
+    -fx-spacing: 30;
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 1);
+}
+
+.legend-color-item {
+    -fx-alignment: center;
+    -fx-spacing: 5;
+}
+
+.legend-color-symbol {
+    -fx-font-size: 18;
+    -fx-font-weight: bold;
+}
+
+.legend-color-label {
+    -fx-font-size: 11;
+    -fx-text-fill: #666;
+}
+
+/* ============ DIALOGUE CALENDRIER TYPE MAQUETTE ============ */
+
+.calendar-dialog-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.calendar-dialog-pane > .header-panel {
+    -fx-pref-height: 0;
+    -fx-padding: 0;
+}
+
+.calendar-dialog-pane > .graphic-container {
+    -fx-padding: 0;
+}
+
+.calendar-dialog-pane > .content.label {
+    -fx-padding: 0;
+}
+
+.calendar-dialog-pane .button-bar {
+    -fx-padding: 0 22 22 22;
+    -fx-background-color: white;
+}
+
+.calendar-dialog-root {
+    -fx-background-color: white;
+    -fx-background-radius: 22;
+    -fx-border-radius: 22;
+    -fx-effect: dropshadow(gaussian, rgba(20, 37, 63, 0.18), 38, 0.18, 0, 8);
+}
+
+.calendar-dialog-header {
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent #edf1f7 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.calendar-dialog-title {
+    -fx-text-fill: #233b6e;
+    -fx-font-size: 17;
+    -fx-font-weight: bold;
+}
+
+.calendar-dialog-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: #233b6e;
+    -fx-font-size: 28;
+    -fx-padding: 0 4 0 4;
+    -fx-cursor: hand;
+}
+
+.calendar-dialog-close:hover {
+    -fx-text-fill: #102856;
+}
+
+.calendar-dialog-confirm {
+    -fx-background-color: #223869;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 10 18 10 18;
+}
+
+.calendar-dialog-confirm:disabled {
+    -fx-opacity: 0.45;
+}
+
+.calendar-dialog-cancel {
+    -fx-background-color: #eef3fb;
+    -fx-text-fill: #233b6e;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 10 18 10 18;
+}
+
+.dual-calendar-root {
+    -fx-background-color: white;
+}
+
+.dual-calendar-header {
+    -fx-padding: 8 4 2 4;
+}
+
+.dual-calendar-nav {
+    -fx-background-color: transparent;
+    -fx-text-fill: #233b6e;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+}
+
+.dual-calendar-nav:hover {
+    -fx-background-color: #f2f5fa;
+    -fx-background-radius: 999;
+}
+
+.dual-calendar-month-title {
+    -fx-text-fill: #243b6c;
+    -fx-font-size: 17;
+    -fx-font-weight: bold;
+}
+
+.dual-calendar-month-panel {
+    -fx-background-color: white;
+    -fx-padding: 4 2 0 2;
+}
+
+.dual-calendar-grid {
+    -fx-hgap: 8;
+    -fx-vgap: 10;
+}
+
+.dual-calendar-day-header {
+    -fx-text-fill: #7080a2;
+    -fx-font-size: 12;
+    -fx-font-weight: 500;
+    -fx-padding: 0 0 8 0;
+    -fx-alignment: center;
+    -fx-min-width: 52;
+}
+
+.dual-calendar-date {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: transparent;
+    -fx-border-radius: 12;
+    -fx-padding: 4 6 4 6;
+    -fx-cursor: hand;
+}
+
+.dual-calendar-date:hover {
+    -fx-background-color: #f7f9fd;
+}
+
+.dual-calendar-date.is-selected {
+    -fx-border-color: #cfd9ea;
+    -fx-background-color: #fbfcff;
+}
+
+.dual-calendar-date.is-today {
+    -fx-border-color: #d8e0ee;
+}
+
+.dual-calendar-date.is-full {
+    -fx-opacity: 0.72;
+}
+
+.dual-calendar-date.is-outside-month {
+    -fx-background-color: transparent;
+    -fx-opacity: 1;
+}
+
+.dual-calendar-date-number {
+    -fx-text-fill: #243b6c;
+    -fx-font-size: 15;
+    -fx-font-weight: bold;
+}
+
+.dual-calendar-date-number.is-outside-month {
+    -fx-text-fill: #d3dae7;
+}
+
+.dual-calendar-availability-bar {
+    -fx-background-color: transparent;
+    -fx-background-radius: 999;
+}
+
+.dual-calendar-legend {
+    -fx-padding: 8 4 2 4;
+}
+
+.dual-calendar-legend-label {
+    -fx-text-fill: #6b7894;
+    -fx-font-size: 12;
+}
+
+/* Appareils responsifs */
+@media (max-width: 900px) {
+    .month-box {
+        -fx-max-width: 100%;
+    }
+}
