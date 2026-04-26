@@ -33,6 +33,7 @@
                                 <TextArea fx:id="messageContentArea" promptText="Votre commentaire..." prefRowCount="3" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
                                 <HBox spacing="12">
                                     <children>
+                                        <Label text="anonymous" style="-fx-text-fill:#29496f; -fx-font-size:12px; -fx-font-weight:700;" />
                                         <CheckBox fx:id="messageAnonymousCheck" text="Anonyme" />
                                     </children>
                                 </HBox>

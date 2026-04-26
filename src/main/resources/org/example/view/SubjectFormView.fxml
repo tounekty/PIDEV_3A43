@@ -70,8 +70,18 @@
                                 <Label text="Options" GridPane.rowIndex="4" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
                                 <HBox spacing="12" GridPane.rowIndex="4" GridPane.columnIndex="1">
                                     <children>
-                                        <CheckBox fx:id="subjectPinnedCheck" text="Epingler" />
-                                        <CheckBox fx:id="subjectAnonymousCheck" text="Poster en anonyme" />
+                                        <HBox spacing="8" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label text="is_pinned" style="-fx-text-fill:#29496f; -fx-font-size:12px; -fx-font-weight:700;" />
+                                                <CheckBox fx:id="subjectPinnedCheck" text="Epingler" />
+                                            </children>
+                                        </HBox>
+                                        <HBox spacing="8" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label text="anonymous" style="-fx-text-fill:#29496f; -fx-font-size:12px; -fx-font-weight:700;" />
+                                                <CheckBox fx:id="subjectAnonymousCheck" text="Poster en anonyme" />
+                                            </children>
+                                        </HBox>
                                     </children>
                                 </HBox>
                                 <Label text="Cochez pour epingler le sujet ou publier en anonyme."
