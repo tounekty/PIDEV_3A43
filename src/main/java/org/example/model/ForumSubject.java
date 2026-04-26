@@ -19,6 +19,7 @@ public class ForumSubject {
     private String username;
     private int likeCount;
     private int dislikeCount;
+    private int messageCount;
     private Boolean userReactionLike;
 
     public ForumSubject() {
@@ -45,13 +46,13 @@ public class ForumSubject {
                         boolean pinned, boolean anonymous, String status, String category, String attachmentPath,
                         String attachmentMimeType, Long attachmentSize, Integer idUser, String username) {
         this(id, titre, description, dateCreation, imageUrl, pinned, anonymous, status, category, attachmentPath,
-            attachmentMimeType, attachmentSize, idUser, username, 0, 0, null);
+            attachmentMimeType, attachmentSize, idUser, username, 0, 0, 0, null);
         }
 
         public ForumSubject(int id, String titre, String description, LocalDateTime dateCreation, String imageUrl,
                 boolean pinned, boolean anonymous, String status, String category, String attachmentPath,
                 String attachmentMimeType, Long attachmentSize, Integer idUser, String username,
-                int likeCount, int dislikeCount, Boolean userReactionLike) {
+                int likeCount, int dislikeCount, int messageCount, Boolean userReactionLike) {
         this.id = id;
         this.titre = titre;
         this.description = description;
@@ -68,6 +69,7 @@ public class ForumSubject {
         this.username = username;
         this.likeCount = likeCount;
         this.dislikeCount = dislikeCount;
+        this.messageCount = messageCount;
         this.userReactionLike = userReactionLike;
     }
 
@@ -197,6 +199,14 @@ public class ForumSubject {
 
     public void setDislikeCount(int dislikeCount) {
         this.dislikeCount = dislikeCount;
+    }
+
+    public int getMessageCount() {
+        return messageCount;
+    }
+
+    public void setMessageCount(int messageCount) {
+        this.messageCount = messageCount;
     }
 
     public Boolean getUserReactionLike() {

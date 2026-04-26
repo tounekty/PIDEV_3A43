@@ -10,7 +10,6 @@ public class User {
     private String email;
     private String firstName;
     private String lastName;
-    private String password;
     private String role;
     private String status;
     private LocalDateTime bannedUntil;
@@ -99,10 +98,6 @@ public class User {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public void setRole(String role) {

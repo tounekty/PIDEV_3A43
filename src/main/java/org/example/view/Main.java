@@ -51,6 +51,7 @@ public class Main extends Application {
     private static final String REACTION_LIKE_ACTIVE = "-fx-background-color: linear-gradient(to right,#0f69ff,#38a4ff); -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
     private static final String REACTION_DISLIKE_ACTIVE = "-fx-background-color: #ff6b7a; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
     private static final int MAX_MESSAGE_THREAD_LEVEL = 3;
+    private static final int POPULAR_SUBJECT_SCORE_THRESHOLD = 10;
 
     private final EventController eventService = new EventController();
     private final AuthController authService = new AuthController();
@@ -123,7 +124,6 @@ public class Main extends Application {
     @FXML private ComboBox<String> forumSortField;
     @FXML private Label forumTitle;
     @FXML private Label forumErrorLabel;
-    private Label forumSubtitle;
     @FXML private Label messagesTitle;
     @FXML private Label messagesErrorLabel;
     @FXML private Label subjectFormTitle;
@@ -1573,17 +1573,6 @@ public class Main extends Application {
         updateImagePreview("", subjectImagePreview, subjectImageMeta);
     }
 
-    private ImageView buildImagePreview() {
-        ImageView view = new ImageView();
-        view.setFitWidth(260);
-        view.setFitHeight(160);
-        view.setPreserveRatio(true);
-        view.setSmooth(true);
-        view.setVisible(false);
-        view.setManaged(false);
-        return view;
-    }
-
     private void updateImagePreview(String path, ImageView preview, Label meta) {
         if (preview == null || meta == null) return;
         if (path == null || path.isBlank()) {
@@ -1615,14 +1604,9 @@ public class Main extends Application {
 
     private void showPage(VBox page) { pageContainer.getChildren().setAll(page); }
 
-    private GridPane formGrid() { GridPane g = new GridPane(); g.setHgap(14); g.setVgap(14); return g; }
-    private void addRow(GridPane g, int row, String label, Node field) { Label l = new Label(label); l.setStyle("-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;"); g.add(l, 0, row); g.add(field, 1, row); GridPane.setHgrow(field, Priority.ALWAYS); }
-    private TextField input(String prompt) { TextField f = new TextField(); f.setPromptText(prompt); f.setStyle(INPUT); return f; }
     private Label small(String text) { Label l = new Label(text); l.setStyle("-fx-text-fill:#637a97; -fx-font-size:13px;"); return l; }
     private Label title(String text, int size) { Label l = new Label(text); l.setStyle("-fx-text-fill:#10233f; -fx-font-size:" + size + "px; -fx-font-weight:800;"); return l; }
     private Button button(String text, String style, javafx.event.EventHandler<javafx.event.ActionEvent> handler) { Button b = new Button(text); b.setStyle(style); b.setOnAction(handler); return b; }
-    private VBox card(Node... nodes) { VBox b = new VBox(16, nodes); b.setPadding(new Insets(28)); b.setStyle(CARD); return b; }
-    private VBox scrollPage(VBox content) { VBox page = new VBox(content); page.setPadding(new Insets(8)); ScrollPane s = new ScrollPane(page); s.setFitToWidth(true); s.setPannable(true); s.setStyle("-fx-background-color:transparent; -fx-background:transparent;"); s.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); VBox wrapper = new VBox(s); VBox.setVgrow(s, Priority.ALWAYS); return wrapper; }
     private void showWarning(String m) { alert(Alert.AlertType.WARNING, "Validation", m); }
     private void showError(String t, String m) { alert(Alert.AlertType.ERROR, t, m); }
     private void showInfo(String t, String m) { alert(Alert.AlertType.INFORMATION, t, m); }
@@ -1712,8 +1696,15 @@ public class Main extends Application {
             String author = subject.isAnonymous() ? "Anonyme" : (subject.getUsername() == null ? "Utilisateur #" + subject.getIdUser() : subject.getUsername());
             String dateText = subject.getDateCreation() == null ? "" : subject.getDateCreation().format(EVENT_FMT);
             String pinned = subject.isPinned() ? "Epingle" : "Normal";
+            int successScore = subject.getLikeCount() + subject.getMessageCount() - subject.getDislikeCount();
 
             Label title = new Label(subject.getTitre()); title.setStyle("-fx-text-fill:#10233f; -fx-font-size:18px; -fx-font-weight:800;");
+            Label successBadge = new Label("Succes");
+            successBadge.setStyle("-fx-text-fill:#0f69ff; -fx-background-color:rgba(15,105,255,0.12); -fx-background-radius:999; -fx-padding:3 10 3 10; -fx-font-size:11px; -fx-font-weight:800;");
+            successBadge.setVisible(successScore >= POPULAR_SUBJECT_SCORE_THRESHOLD);
+            successBadge.setManaged(successScore >= POPULAR_SUBJECT_SCORE_THRESHOLD);
+            HBox titleRow = new HBox(8, title, successBadge);
+            titleRow.setAlignment(Pos.CENTER_LEFT);
             Label meta = small("Auteur: " + author + "  |  " + dateText + "  |  " + pinned);
             Label desc = new Label(subject.getDescription() == null ? "" : subject.getDescription());
             desc.setWrapText(true); desc.setStyle("-fx-text-fill:#415a78; -fx-font-size:13px;");
@@ -1727,7 +1718,7 @@ public class Main extends Application {
             Label reactionHint = small("Cliquez une deuxieme fois pour retirer votre reaction.");
             reactionHint.setStyle("-fx-text-fill:#6b819d; -fx-font-size:11px;");
 
-            VBox text = new VBox(10, title, meta, desc, tags, reactions, reactionHint);
+            VBox text = new VBox(10, titleRow, meta, desc, tags, reactions, reactionHint);
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
             VBox actions = new VBox(10); actions.setAlignment(Pos.CENTER_RIGHT);
