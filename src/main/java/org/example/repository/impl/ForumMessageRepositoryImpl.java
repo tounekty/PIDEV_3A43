@@ -62,7 +62,11 @@ public class ForumMessageRepositoryImpl implements ForumMessageRepository {
             }
             statement.setInt(7, message.getIdSujet());
             statement.setInt(8, message.getIdUser());
-            statement.setNull(9, java.sql.Types.INTEGER);
+            if (message.getParentMessageId() == null) {
+                statement.setNull(9, java.sql.Types.INTEGER);
+            } else {
+                statement.setInt(9, message.getParentMessageId());
+            }
             statement.executeUpdate();
         }
     }
@@ -92,8 +96,8 @@ public class ForumMessageRepositoryImpl implements ForumMessageRepository {
     @Override
     public List<ForumMessage> findBySubjectId(int subjectId) throws SQLException {
         String sql = """
-                SELECT m.id, m.contenu, m.date_message, m.is_anonymous, m.attachment_path,
-                       m.attachment_mime_type, m.attachment_size, m.id_sujet, m.id_user, u.username
+              SELECT m.id, m.contenu, m.date_message, m.is_anonymous, m.attachment_path,
+                  m.attachment_mime_type, m.attachment_size, m.id_sujet, m.id_user, m.parent_message_id, u.username
                 FROM message_forum m
                 LEFT JOIN users u ON u.id = m.id_user
                 WHERE m.id_sujet = ?
@@ -106,22 +110,53 @@ public class ForumMessageRepositoryImpl implements ForumMessageRepository {
             statement.setInt(1, subjectId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
-                    messages.add(new ForumMessage(
-                            resultSet.getInt("id"),
-                            resultSet.getString("contenu"),
-                            toLocalDateTime(resultSet.getTimestamp("date_message")),
-                            resultSet.getBoolean("is_anonymous"),
-                            resultSet.getString("attachment_path"),
-                            resultSet.getString("attachment_mime_type"),
-                            resultSet.getObject("attachment_size") != null ? resultSet.getLong("attachment_size") : null,
-                            resultSet.getInt("id_sujet"),
-                            resultSet.getInt("id_user"),
-                            resultSet.getString("username")
-                    ));
+                    messages.add(mapMessage(resultSet));
                 }
             }
         }
         return messages;
+    }
+
+    @Override
+    public ForumMessage findById(int id) throws SQLException {
+        String sql = """
+                SELECT m.id, m.contenu, m.date_message, m.is_anonymous, m.attachment_path,
+                       m.attachment_mime_type, m.attachment_size, m.id_sujet, m.id_user, m.parent_message_id, u.username
+                FROM message_forum m
+                LEFT JOIN users u ON u.id = m.id_user
+                WHERE m.id = ?
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return mapMessage(resultSet);
+                }
+            }
+        }
+        return null;
+    }
+
+    private ForumMessage mapMessage(ResultSet resultSet) throws SQLException {
+        Integer parentMessageId = resultSet.getObject("parent_message_id") == null
+                ? null
+                : resultSet.getInt("parent_message_id");
+
+        return new ForumMessage(
+                resultSet.getInt("id"),
+                resultSet.getString("contenu"),
+                toLocalDateTime(resultSet.getTimestamp("date_message")),
+                resultSet.getBoolean("is_anonymous"),
+                resultSet.getString("attachment_path"),
+                resultSet.getString("attachment_mime_type"),
+                resultSet.getObject("attachment_size") != null ? resultSet.getLong("attachment_size") : null,
+                resultSet.getInt("id_sujet"),
+                resultSet.getInt("id_user"),
+                resultSet.getString("username"),
+                parentMessageId
+        );
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {

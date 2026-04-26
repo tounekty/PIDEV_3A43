@@ -25,11 +25,18 @@
                     <children>
                         <Label fx:id="messagesTitle" text="Commentaires" style="-fx-text-fill:#10233f; -fx-font-size:24px; -fx-font-weight:800;" />
                         <Label text="Discussion sur le sujet selectionne." style="-fx-text-fill:#637a97; -fx-font-size:13px;" />
+                        <Label text="Affichage en fil: les reponses sont indentees sous leur commentaire parent (max 3 niveaux)." style="-fx-text-fill:#5a7291; -fx-font-size:12px; -fx-font-weight:700;" />
                         <Label fx:id="messagesErrorLabel" text="" visible="false" managed="false" style="-fx-text-fill: #c63d48; -fx-font-size: 12px; -fx-font-weight: bold;" />
                         <ListView fx:id="messageListView" style="-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;" VBox.vgrow="ALWAYS" />
                         <VBox spacing="12">
                             <children>
                                 <Label text="Nouveau commentaire" style="-fx-text-fill:#10233f; -fx-font-size:16px; -fx-font-weight:800;" />
+                                <HBox spacing="10">
+                                    <children>
+                                        <Label fx:id="messageReplyInfoLabel" text="" visible="false" managed="false" style="-fx-text-fill:#2a5fa3; -fx-font-size:12px; -fx-font-weight:700;" />
+                                        <Button fx:id="messageCancelReplyButton" text="Annuler la reponse" onAction="#handleMessageReplyCancel" visible="false" managed="false" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 8 14 8 14;" />
+                                    </children>
+                                </HBox>
                                 <TextArea fx:id="messageContentArea" promptText="Votre commentaire..." prefRowCount="3" style="-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;" />
                                 <HBox spacing="12">
                                     <children>

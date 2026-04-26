@@ -15,4 +15,6 @@ public interface ForumMessageRepository {
     void deleteBySubjectId(int subjectId) throws SQLException;
     
     List<ForumMessage> findBySubjectId(int subjectId) throws SQLException;
+
+    ForumMessage findById(int id) throws SQLException;
 }
