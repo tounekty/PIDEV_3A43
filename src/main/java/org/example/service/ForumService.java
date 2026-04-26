@@ -44,4 +44,18 @@ public class ForumService {
     public List<ForumSubject> getSubjects(String query, String sortBy) throws SQLException {
         return forumRepository.findByQuery(query, sortBy);
     }
+
+    public List<ForumSubject> getSubjects(String query, String sortBy, Integer userId) throws SQLException {
+        return forumRepository.findByQuery(query, sortBy, userId);
+    }
+
+    public void reactToSubject(int subjectId, int userId, boolean like) throws SQLException {
+        if (subjectId <= 0) {
+            throw new SQLException("Valid subject ID is required.");
+        }
+        if (userId <= 0) {
+            throw new SQLException("Valid user ID is required.");
+        }
+        forumRepository.reactToSubject(subjectId, userId, like);
+    }
 }

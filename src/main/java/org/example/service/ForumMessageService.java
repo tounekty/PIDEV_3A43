@@ -49,10 +49,14 @@ public class ForumMessageService {
     }
 
     public List<ForumMessage> getMessagesBySubject(int subjectId) throws SQLException {
+        return getMessagesBySubject(subjectId, null);
+    }
+
+    public List<ForumMessage> getMessagesBySubject(int subjectId, Integer userId) throws SQLException {
         if (subjectId <= 0) {
             throw new SQLException("Valid subject ID is required.");
         }
-        return forumMessageRepository.findBySubjectId(subjectId);
+        return forumMessageRepository.findBySubjectId(subjectId, userId);
     }
 
     public void deleteMessage(int id) throws SQLException {
@@ -67,6 +71,16 @@ public class ForumMessageService {
             throw new SQLException("Valid subject ID is required.");
         }
         forumMessageRepository.deleteBySubjectId(subjectId);
+    }
+
+    public void reactToMessage(int messageId, int userId, boolean like) throws SQLException {
+        if (messageId <= 0) {
+            throw new SQLException("Valid message ID is required.");
+        }
+        if (userId <= 0) {
+            throw new SQLException("Valid user ID is required.");
+        }
+        forumMessageRepository.reactToMessage(messageId, userId, like);
     }
 
     private int computeLevel(ForumMessage message) throws SQLException {

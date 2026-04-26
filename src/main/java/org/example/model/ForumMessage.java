@@ -15,6 +15,9 @@ public class ForumMessage {
     private String username;
     private Integer parentMessageId;
     private int threadLevel = 1;
+    private int likeCount;
+    private int dislikeCount;
+    private Boolean userReactionLike;
 
     public ForumMessage() {
     }
@@ -40,6 +43,13 @@ public class ForumMessage {
     public ForumMessage(int id, String contenu, LocalDateTime dateMessage, boolean anonymous, String attachmentPath,
                         String attachmentMimeType, Long attachmentSize, int idSujet, int idUser, String username,
                         Integer parentMessageId) {
+        this(id, contenu, dateMessage, anonymous, attachmentPath, attachmentMimeType, attachmentSize,
+            idSujet, idUser, username, parentMessageId, 0, 0, null);
+        }
+
+        public ForumMessage(int id, String contenu, LocalDateTime dateMessage, boolean anonymous, String attachmentPath,
+                String attachmentMimeType, Long attachmentSize, int idSujet, int idUser, String username,
+                Integer parentMessageId, int likeCount, int dislikeCount, Boolean userReactionLike) {
         this.id = id;
         this.contenu = contenu;
         this.dateMessage = dateMessage;
@@ -52,6 +62,9 @@ public class ForumMessage {
         this.username = username;
         this.parentMessageId = parentMessageId;
         this.threadLevel = 1;
+        this.likeCount = likeCount;
+        this.dislikeCount = dislikeCount;
+        this.userReactionLike = userReactionLike;
     }
 
     public int getId() {
@@ -148,5 +161,29 @@ public class ForumMessage {
 
     public void setThreadLevel(int threadLevel) {
         this.threadLevel = threadLevel;
+    }
+
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public int getDislikeCount() {
+        return dislikeCount;
+    }
+
+    public void setDislikeCount(int dislikeCount) {
+        this.dislikeCount = dislikeCount;
+    }
+
+    public Boolean getUserReactionLike() {
+        return userReactionLike;
+    }
+
+    public void setUserReactionLike(Boolean userReactionLike) {
+        this.userReactionLike = userReactionLike;
     }
 }

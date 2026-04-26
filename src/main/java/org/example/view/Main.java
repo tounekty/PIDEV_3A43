@@ -47,6 +47,9 @@ public class Main extends Application {
     private static final String SECONDARY = "-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;";
     private static final String DANGER = "-fx-background-color: #fff4f4; -fx-text-fill: #c63d48; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #ffd5d8; -fx-padding: 11 16 11 16;";
     private static final String INPUT = "-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;";
+    private static final String REACTION_NEUTRAL = "-fx-background-color: white; -fx-text-fill: #2b5f9e; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #cfe3ff; -fx-padding: 8 12 8 12;";
+    private static final String REACTION_LIKE_ACTIVE = "-fx-background-color: linear-gradient(to right,#0f69ff,#38a4ff); -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
+    private static final String REACTION_DISLIKE_ACTIVE = "-fx-background-color: #ff6b7a; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
     private static final int MAX_MESSAGE_THREAD_LEVEL = 3;
 
     private final EventController eventService = new EventController();
@@ -876,7 +879,8 @@ public class Main extends Application {
         try {
             String query = forumSearchField == null ? null : forumSearchField.getText().trim();
             String sortBy = forumSortField == null ? null : forumSortField.getValue();
-            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy));
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy, userId));
             clearInlineError(forumErrorLabel);
         } catch (SQLException e) {
             forumListView.getItems().clear();
@@ -892,7 +896,8 @@ public class Main extends Application {
             return;
         }
         try {
-            List<ForumMessage> rawMessages = forumMessageService.getMessagesBySubject(currentSubject.getId());
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            List<ForumMessage> rawMessages = forumMessageService.getMessagesBySubject(currentSubject.getId(), userId);
             messageIndexById.clear();
             for (ForumMessage message : rawMessages) {
                 if (message.getId() > 0) {
@@ -1196,6 +1201,47 @@ public class Main extends Application {
     private boolean canDeleteMessage(ForumMessage message) {
         if (currentUser == null) return false;
         return currentUser.isAdmin() || message.getIdUser() == currentUser.getId();
+    }
+
+    private void reactToSubject(ForumSubject subject, boolean like) {
+        if (subject == null) {
+            return;
+        }
+        if (currentUser == null) {
+            setInlineError(forumErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumService.reactToSubject(subject.getId(), currentUser.getId(), like);
+            loadForumSubjects();
+            clearInlineError(forumErrorLabel);
+        } catch (SQLException e) {
+            setInlineError(forumErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private void reactToMessage(ForumMessage message, boolean like) {
+        if (message == null) {
+            return;
+        }
+        if (currentUser == null) {
+            setInlineError(messagesErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumMessageService.reactToMessage(message.getId(), currentUser.getId(), like);
+            loadMessages();
+            clearInlineError(messagesErrorLabel);
+        } catch (SQLException e) {
+            setInlineError(messagesErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private String reactionButtonStyle(Boolean userReactionLike, boolean buttonLike) {
+        if (userReactionLike != null && userReactionLike == buttonLike) {
+            return buttonLike ? REACTION_LIKE_ACTIVE : REACTION_DISLIKE_ACTIVE;
+        }
+        return REACTION_NEUTRAL;
     }
 
     private String displayMessageAuthor(ForumMessage message) {
@@ -1674,7 +1720,14 @@ public class Main extends Application {
             Label tags = new Label("Categorie: " + safeText(subject.getCategory()) + "   |   Statut: " + safeText(subject.getStatus()));
             tags.setStyle("-fx-text-fill:#2a5fa3; -fx-font-size:12px; -fx-font-weight:700;");
 
-            VBox text = new VBox(10, title, meta, desc, tags);
+            Button like = button("Like (" + subject.getLikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), true), e -> reactToSubject(subject, true));
+            Button dislike = button("Dislike (" + subject.getDislikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), false), e -> reactToSubject(subject, false));
+            HBox reactions = new HBox(8, like, dislike);
+            reactions.setAlignment(Pos.CENTER_LEFT);
+            Label reactionHint = small("Cliquez une deuxieme fois pour retirer votre reaction.");
+            reactionHint.setStyle("-fx-text-fill:#6b819d; -fx-font-size:11px;");
+
+            VBox text = new VBox(10, title, meta, desc, tags, reactions, reactionHint);
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
             VBox actions = new VBox(10); actions.setAlignment(Pos.CENTER_RIGHT);
@@ -1734,6 +1787,12 @@ public class Main extends Application {
                 Label att = small("Fichier: " + message.getAttachmentPath());
                 box.getChildren().add(att);
             }
+
+            Button like = button("Like (" + message.getLikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), true), e -> reactToMessage(message, true));
+            Button dislike = button("Dislike (" + message.getDislikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), false), e -> reactToMessage(message, false));
+            HBox reactions = new HBox(8, like, dislike);
+            reactions.setAlignment(Pos.CENTER_LEFT);
+            box.getChildren().add(reactions);
 
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
             Button reply = button("Repondre", SECONDARY, e -> startReplyToMessage(message));

@@ -15,8 +15,16 @@ public interface ForumRepository {
     void delete(int id) throws SQLException;
     
     List<ForumSubject> findAll() throws SQLException;
+
+    List<ForumSubject> findAll(Integer userId) throws SQLException;
     
     List<ForumSubject> findByQuery(String query, String sortBy) throws SQLException;
+
+    List<ForumSubject> findByQuery(String query, String sortBy, Integer userId) throws SQLException;
     
     ForumSubject findById(int id) throws SQLException;
+
+    ForumSubject findById(int id, Integer userId) throws SQLException;
+
+    void reactToSubject(int subjectId, int userId, boolean like) throws SQLException;
 }
