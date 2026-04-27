@@ -27,6 +27,8 @@ import org.example.controller.EventController;
 import org.example.controller.ForumMessageController;
 import org.example.controller.ForumController;
 import org.example.controller.ReservationController;
+import org.example.service.MentionNotificationResult;
+import org.example.service.MentionNotificationService;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,6 +60,7 @@ public class Main extends Application {
     private final ReservationController reservationService = new ReservationController();
     private final ForumController forumService = new ForumController();
     private final ForumMessageController forumMessageService = new ForumMessageController();
+    private final MentionNotificationService mentionNotificationService = new MentionNotificationService();
     private final Map<Integer, Integer> reservationCounts = new HashMap<>();
     private final Map<Integer, ForumMessage> messageIndexById = new HashMap<>();
     private final Set<Integer> reservedEventIds = new HashSet<>();
@@ -95,6 +98,7 @@ public class Main extends Application {
     @FXML private PasswordField loginPasswordField;
     @FXML private Label loginErrorLabel;
     @FXML private TextField registerUsernameField;
+    @FXML private TextField registerEmailField;
     @FXML private PasswordField registerPasswordField;
     @FXML private PasswordField registerConfirmPasswordField;
     @FXML private Label registerErrorLabel;
@@ -380,6 +384,9 @@ public class Main extends Application {
         if (subjectImageUrlField != null) {
             subjectImageUrlField.setEditable(false);
         }
+        if (subjectDescriptionArea != null) {
+            subjectDescriptionArea.setPromptText("Description, avec @nomUtilisateur pour notifier une personne");
+        }
         initSubjectStatusButtons();
     }
 
@@ -431,6 +438,9 @@ public class Main extends Application {
         }
         if (messageAttachmentPathField != null) {
             messageAttachmentPathField.setEditable(false);
+        }
+        if (messageContentArea != null) {
+            messageContentArea.setPromptText("Votre commentaire, avec @nomUtilisateur pour notifier une personne");
         }
         clearMessageReplyContext();
     }
@@ -701,6 +711,7 @@ public class Main extends Application {
     }
     private void attemptRegister() {
         String username = registerUsernameField != null ? registerUsernameField.getText().trim() : "";
+        String email = registerEmailField != null ? registerEmailField.getText().trim() : "";
         String password = registerPasswordField != null ? registerPasswordField.getText() : "";
         String confirm = registerConfirmPasswordField != null ? registerConfirmPasswordField.getText() : "";
 
@@ -709,8 +720,13 @@ public class Main extends Application {
             registerErrorLabel.setManaged(false);
         }
 
-        if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
+        if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
             setRegisterError("❌ Tous les champs sont obligatoires.");
+            return;
+        }
+
+        if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            setRegisterError("Email invalide.");
             return;
         }
 
@@ -725,7 +741,7 @@ public class Main extends Application {
         }
 
         try {
-            authService.register(username, password, "ETUDIANT");
+            authService.register(username, password, email, "ETUDIANT");
             showInfo("Inscription réussie", "Votre compte a été créé avec succès.");
             showLoginPage();
         } catch (SQLException ex) {
@@ -785,6 +801,7 @@ public class Main extends Application {
             registerErrorLabel.setManaged(false);
         }
         if (registerUsernameField != null) registerUsernameField.clear();
+        if (registerEmailField != null) registerEmailField.clear();
         if (registerPasswordField != null) registerPasswordField.clear();
         if (registerConfirmPasswordField != null) registerConfirmPasswordField.clear();
         showPage(registerPage);
@@ -807,6 +824,7 @@ public class Main extends Application {
         if (loginUsernameField != null) loginUsernameField.clear();
         if (loginPasswordField != null) loginPasswordField.clear();
         if (registerUsernameField != null) registerUsernameField.clear();
+        if (registerEmailField != null) registerEmailField.clear();
         if (registerPasswordField != null) registerPasswordField.clear();
         if (registerConfirmPasswordField != null) registerConfirmPasswordField.clear();
 
@@ -1073,7 +1091,8 @@ public class Main extends Application {
         try {
             if (editingSubject == null) {
                 forumService.addSubject(subject);
-                showInfo("Sujet publie", "Le sujet a ete ajoute.");
+                String mentionMessage = notifySubjectMentions(subject);
+                showInfo("Sujet publie", "Le sujet a ete ajoute." + mentionMessage);
             } else {
                 subject.setId(editingSubject.getId());
                 forumService.updateSubject(subject);
@@ -1159,12 +1178,46 @@ public class Main extends Application {
 
         try {
             forumMessageService.addMessage(message);
+            String mentionMessage = notifyMessageMentions(message);
             resetMessageForm();
             loadMessages();
             clearInlineError(messagesErrorLabel);
+            if (!mentionMessage.isBlank()) {
+                showInfo("Commentaire publie", "Le commentaire a ete ajoute." + mentionMessage);
+            }
         } catch (SQLException e) {
             setInlineError(messagesErrorLabel, "Commentaire impossible: " + e.getMessage());
         }
+    }
+
+    private String notifySubjectMentions(ForumSubject subject) {
+        try {
+            return formatMentionNotification(mentionNotificationService.notifySubjectMentions(subject, currentUser));
+        } catch (SQLException e) {
+            return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
+        }
+    }
+
+    private String notifyMessageMentions(ForumMessage message) {
+        try {
+            return formatMentionNotification(mentionNotificationService.notifyMessageMentions(currentSubject, message, currentUser));
+        } catch (SQLException e) {
+            return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
+        }
+    }
+
+    private String formatMentionNotification(MentionNotificationResult result) {
+        if (result == null || result.getMentionedUsers() == 0) {
+            return "";
+        }
+        if (!result.isMailConfigured()) {
+            return "\n" + result.getMentionedUsers() + " mention(s) trouvee(s). Configurez SMTP_HOST et SMTP_FROM pour envoyer les e-mails.";
+        }
+        if (result.getEmailsSent() == result.getMentionedUsers()) {
+            return "\nE-mail envoye a " + result.getEmailsSent() + " personne(s) mentionnee(s).";
+        }
+        String detail = result.getFirstError().isBlank() ? "" : "\nErreur: " + result.getFirstError();
+        return "\nE-mails envoyes: " + result.getEmailsSent() + ", echecs: " + result.getEmailsFailed() + "." + detail;
     }
 
     private void deleteMessage(ForumMessage message) {

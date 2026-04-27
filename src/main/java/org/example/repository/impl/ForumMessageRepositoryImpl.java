@@ -62,7 +62,7 @@ public class ForumMessageRepositoryImpl implements ForumMessageRepository {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             LocalDateTime dateMessage = message.getDateMessage() != null ? message.getDateMessage() : LocalDateTime.now();
             statement.setString(1, message.getContenu());
             statement.setTimestamp(2, Timestamp.valueOf(dateMessage));
@@ -82,6 +82,11 @@ public class ForumMessageRepositoryImpl implements ForumMessageRepository {
                 statement.setInt(9, message.getParentMessageId());
             }
             statement.executeUpdate();
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    message.setId(generatedKeys.getInt(1));
+                }
+            }
         }
     }
 

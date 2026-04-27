@@ -67,7 +67,7 @@ public class ForumRepositoryImpl implements ForumRepository {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, subject.getTitre());
             statement.setString(2, normalize(subject.getDescription()));
             statement.setTimestamp(3, toTimestamp(subject.getDateCreation()));
@@ -89,6 +89,11 @@ public class ForumRepositoryImpl implements ForumRepository {
                 statement.setInt(12, subject.getIdUser());
             }
             statement.executeUpdate();
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    subject.setId(generatedKeys.getInt(1));
+                }
+            }
         }
     }
 
