@@ -134,8 +134,14 @@ public class Main extends Application {
     @FXML private ComboBox<String> forumSortField;
     @FXML private Label forumTitle;
     @FXML private Label forumErrorLabel;
+    @FXML private Button forumPrevButton;
+    @FXML private Button forumNextButton;
+    @FXML private Label forumPageLabel;
     @FXML private Label messagesTitle;
     @FXML private Label messagesErrorLabel;
+    @FXML private Button messagePrevButton;
+    @FXML private Button messageNextButton;
+    @FXML private Label messagePageLabel;
     @FXML private Label subjectFormTitle;
     @FXML private Label subjectErrorLabel;
     @FXML private VBox statsBox;
@@ -143,6 +149,14 @@ public class Main extends Application {
     private ForumSubject editingSubject;
     private ForumSubject currentSubject;
     private ForumMessage replyingToMessage;
+
+    // Pagination variables
+    private static final int SUBJECTS_PER_PAGE = 4;
+    private static final int MESSAGES_PER_PAGE = 6;
+    private List<ForumSubject> allForumSubjects = new ArrayList<>();
+    private int currentForumPage = 1;
+    private List<ForumMessage> allForumMessages = new ArrayList<>();
+    private int currentMessagesPage = 1;
 
     @FXML private TextField subjectTitleField;
     @FXML private TextArea subjectDescriptionArea;
@@ -910,18 +924,60 @@ public class Main extends Application {
             String query = forumSearchField == null ? null : forumSearchField.getText().trim();
             String sortBy = forumSortField == null ? null : forumSortField.getValue();
             Integer userId = currentUser == null ? null : currentUser.getId();
-            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy, userId));
+            
+            // Get all subjects
+            allForumSubjects = forumService.getSubjects(query, sortBy, userId);
+            currentForumPage = 1;
+            
+            displayForumPage();
             clearInlineError(forumErrorLabel);
         } catch (SQLException e) {
+            allForumSubjects.clear();
             forumListView.getItems().clear();
             setInlineError(forumErrorLabel, "Chargement du forum impossible: " + e.getMessage());
         }
+    }
+
+    private void displayForumPage() {
+        int totalPages = (int) Math.ceil((double) allForumSubjects.size() / SUBJECTS_PER_PAGE);
+        if (currentForumPage < 1) currentForumPage = 1;
+        if (currentForumPage > totalPages && totalPages > 0) currentForumPage = totalPages;
+
+        int startIdx = (currentForumPage - 1) * SUBJECTS_PER_PAGE;
+        int endIdx = Math.min(startIdx + SUBJECTS_PER_PAGE, allForumSubjects.size());
+        List<ForumSubject> pageSubjects = allForumSubjects.subList(startIdx, endIdx);
+
+        forumListView.getItems().setAll(pageSubjects);
+        
+        if (forumPageLabel != null) {
+            forumPageLabel.setText("Page " + currentForumPage + " / " + Math.max(1, totalPages));
+        }
+        if (forumPrevButton != null) {
+            forumPrevButton.setDisable(currentForumPage <= 1);
+        }
+        if (forumNextButton != null) {
+            forumNextButton.setDisable(currentForumPage >= totalPages || totalPages == 0);
+        }
+    }
+
+    @FXML
+    private void handleForumPrevPage() {
+        currentForumPage--;
+        displayForumPage();
+    }
+
+    @FXML
+    private void handleForumNextPage() {
+        currentForumPage++;
+        displayForumPage();
     }
 
     private void loadMessages() {
         if (currentSubject == null) {
             messageIndexById.clear();
             messageListView.getItems().clear();
+            allForumMessages.clear();
+            currentMessagesPage = 1;
             clearInlineError(messagesErrorLabel);
             return;
         }
@@ -934,13 +990,50 @@ public class Main extends Application {
                     messageIndexById.put(message.getId(), message);
                 }
             }
-            messageListView.getItems().setAll(buildThreadedMessages(rawMessages));
+            allForumMessages = buildThreadedMessages(rawMessages);
+            currentMessagesPage = 1;
+            displayMessagesPage();
             clearInlineError(messagesErrorLabel);
         } catch (SQLException e) {
             messageIndexById.clear();
             messageListView.getItems().clear();
+            allForumMessages.clear();
             setInlineError(messagesErrorLabel, "Chargement des commentaires impossible: " + e.getMessage());
         }
+    }
+
+    private void displayMessagesPage() {
+        int totalPages = (int) Math.ceil((double) allForumMessages.size() / MESSAGES_PER_PAGE);
+        if (currentMessagesPage < 1) currentMessagesPage = 1;
+        if (currentMessagesPage > totalPages && totalPages > 0) currentMessagesPage = totalPages;
+
+        int startIdx = (currentMessagesPage - 1) * MESSAGES_PER_PAGE;
+        int endIdx = Math.min(startIdx + MESSAGES_PER_PAGE, allForumMessages.size());
+        List<ForumMessage> pageMessages = allForumMessages.subList(startIdx, endIdx);
+
+        messageListView.getItems().setAll(pageMessages);
+        
+        if (messagePageLabel != null) {
+            messagePageLabel.setText("Page " + currentMessagesPage + " / " + Math.max(1, totalPages));
+        }
+        if (messagePrevButton != null) {
+            messagePrevButton.setDisable(currentMessagesPage <= 1);
+        }
+        if (messageNextButton != null) {
+            messageNextButton.setDisable(currentMessagesPage >= totalPages || totalPages == 0);
+        }
+    }
+
+    @FXML
+    private void handleMessagePrevPage() {
+        currentMessagesPage--;
+        displayMessagesPage();
+    }
+
+    @FXML
+    private void handleMessageNextPage() {
+        currentMessagesPage++;
+        displayMessagesPage();
     }
 
     private List<ForumMessage> buildThreadedMessages(List<ForumMessage> messages) {
