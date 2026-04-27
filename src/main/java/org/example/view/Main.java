@@ -1299,7 +1299,7 @@ public class Main extends Application {
     private void deleteMessage(ForumMessage message) {
         if (!canDeleteMessage(message)) { setInlineError(messagesErrorLabel, "Vous ne pouvez pas supprimer ce commentaire."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Supprimer le commentaire #" + message.getId());
+        alert.setHeaderText("Supprimer le commentaire " );
         alert.setContentText("Confirmer la suppression du commentaire ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
@@ -1656,7 +1656,7 @@ public class Main extends Application {
 
     private void delete(Event event) {
         if (currentUser == null || !currentUser.isAdmin()) { showError("Acces refuse", "Seul l'admin peut supprimer."); return; }
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION); alert.setHeaderText("Supprimer l'evenement #" + event.getId()); alert.setContentText("Confirmer la suppression de " + event.getTitre() + " ?");
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION); alert.setHeaderText("Supprimer l'evenement "); alert.setContentText("Confirmer la suppression de " + event.getTitre() + " ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
             try { reservationService.deleteReservationsForEvent(event.getId()); eventService.deleteEvent(event.getId()); loadEvents(); loadReservations(); }
