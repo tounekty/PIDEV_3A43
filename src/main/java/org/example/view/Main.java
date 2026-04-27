@@ -1129,7 +1129,14 @@ public class Main extends Application {
             return;
         }
         if (!forumAiRewriteService.isConfigured()) {
-            setInlineError(subjectErrorLabel, "HF_TOKEN n'est pas configure. Ajoutez la variable puis relancez l'application.");
+            setInlineError(subjectErrorLabel, "Ollama n'est pas configure. Verifiez OLLAMA_BASE_URL puis relancez l'application.");
+            return;
+        }
+
+        // quick model availability check to provide clearer errors (token vs model permissions)
+        String modelCheck = forumAiRewriteService.validateModelAvailability();
+        if (modelCheck != null) {
+            setInlineError(subjectErrorLabel, "Reformulation IA impossible: " + modelCheck);
             return;
         }
 

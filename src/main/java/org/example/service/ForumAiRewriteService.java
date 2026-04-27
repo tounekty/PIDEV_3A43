@@ -13,8 +13,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 public class ForumAiRewriteService {
-    private static final String HUGGING_FACE_CHAT_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
-    private static final String DEFAULT_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
+    private static final String DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
+    private static final String DEFAULT_MODEL = "llama3.2";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -22,13 +22,13 @@ public class ForumAiRewriteService {
             .build();
 
     public boolean isConfigured() {
-        String token = System.getenv("HF_TOKEN");
-        return token != null && !token.isBlank();
+        String baseUrl = configuredBaseUrl();
+        return baseUrl != null && !baseUrl.isBlank();
     }
 
     public ForumRewriteSuggestion rewriteSubject(String title, String description) throws IOException, InterruptedException {
         if (!isConfigured()) {
-            throw new IOException("HF_TOKEN n'est pas configure.");
+            throw new IOException("Ollama n'est pas configure.");
         }
 
         String prompt = """
@@ -43,38 +43,28 @@ public class ForumAiRewriteService {
                 %s
                 """.formatted(nullToEmpty(title), nullToEmpty(description));
 
-        ObjectNode systemMessage = objectMapper.createObjectNode();
-        systemMessage.put("role", "system");
-        systemMessage.put("content", "Tu es un assistant qui reformule des sujets de forum en francais professionnel. Tu reponds uniquement en JSON valide.");
-
-        ObjectNode userMessage = objectMapper.createObjectNode();
-        userMessage.put("role", "user");
-        userMessage.put("content", prompt);
-
-        ObjectNode responseFormat = objectMapper.createObjectNode();
-        responseFormat.put("type", "json_object");
-
         ObjectNode payload = objectMapper.createObjectNode();
+        ObjectNode options = objectMapper.createObjectNode();
         payload.put("model", configuredModel());
-        payload.putArray("messages").add(systemMessage).add(userMessage);
-        payload.put("max_tokens", 700);
-        payload.put("temperature", 0.4);
-        payload.set("response_format", responseFormat);
+        payload.put("prompt", prompt);
+        payload.put("stream", false);
+        payload.put("format", "json");
+        options.put("temperature", 0.4);
+        payload.set("options", options);
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(HUGGING_FACE_CHAT_URL))
+        HttpRequest request = HttpRequest.newBuilder(URI.create(configuredBaseUrl() + "/api/generate"))
                 .timeout(Duration.ofSeconds(60))
-                .header("Authorization", "Bearer " + System.getenv("HF_TOKEN"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException(readHuggingFaceError(response.statusCode(), response.body()));
+            throw new IOException(readOllamaError(response.statusCode(), response.body()));
         }
 
         String outputText = extractOutputText(response.body());
-        JsonNode suggestion = objectMapper.readTree(cleanJsonText(outputText));
+        JsonNode suggestion = objectMapper.readTree(extractJsonObject(cleanJsonText(outputText)));
         String rewrittenTitle = suggestion.path("title").asText("").trim();
         String rewrittenDescription = suggestion.path("description").asText("").trim();
         if (rewrittenTitle.isBlank() || rewrittenDescription.isBlank()) {
@@ -83,51 +73,80 @@ public class ForumAiRewriteService {
         return new ForumRewriteSuggestion(rewrittenTitle, rewrittenDescription);
     }
 
+    private String configuredBaseUrl() {
+        String baseUrl = System.getenv("OLLAMA_BASE_URL");
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return DEFAULT_OLLAMA_BASE_URL;
+        }
+        return baseUrl.trim().replaceAll("/+$", "");
+    }
+
     private String configuredModel() {
-        String model = System.getenv("HF_MODEL");
+        String model = System.getenv("OLLAMA_MODEL");
         return model == null || model.isBlank() ? DEFAULT_MODEL : model.trim();
+    }
+
+    public String validateModelAvailability() {
+        if (!isConfigured()) return "OLLAMA_BASE_URL n'est pas configure.";
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(configuredBaseUrl() + "/api/tags"))
+                    .timeout(Duration.ofSeconds(20))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return readOllamaError(response.statusCode(), response.body());
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            JsonNode models = root.path("models");
+            String wanted = configuredModel();
+            String wantedPrefix = wanted + ":";
+            for (JsonNode model : models) {
+                String name = model.path("name").asText("");
+                if (name.equalsIgnoreCase(wanted) || name.equalsIgnoreCase(wanted + ":latest") || name.toLowerCase().startsWith(wantedPrefix.toLowerCase())) {
+                    return null;
+                }
+            }
+            return "Modele Ollama introuvable: " + wanted + ". Lancez: ollama pull " + wanted;
+        } catch (Exception e) {
+            return "Impossible de contacter Ollama. Verifiez que Ollama est lance sur " + configuredBaseUrl() + ".";
+        }
     }
 
     private String extractOutputText(String responseBody) throws IOException {
         JsonNode root = objectMapper.readTree(responseBody);
-        JsonNode content = root.path("choices").path(0).path("message").path("content");
-        if (content.isTextual() && !content.asText().isBlank()) {
-            return content.asText();
+        JsonNode output = root.path("response");
+        if (output.isTextual() && !output.asText().isBlank()) {
+            return output.asText();
+        }
+
+        JsonNode error = root.path("error");
+        if (error.isTextual() && !error.asText().isBlank()) {
+            throw new IOException(error.asText());
         }
         throw new IOException("Impossible de lire le texte genere par l'IA.");
     }
 
-    private String readHuggingFaceError(int statusCode, String responseBody) {
+    private String readOllamaError(int statusCode, String responseBody) {
         String message = "";
         try {
             JsonNode root = objectMapper.readTree(responseBody);
             JsonNode error = root.path("error");
             if (error.isTextual()) {
                 message = error.asText();
-            } else if (error.isObject()) {
-                message = error.path("message").asText("");
-            }
-            if (message.isBlank()) {
-                message = root.path("message").asText("");
             }
         } catch (Exception ignored) {
             message = responseBody == null ? "" : responseBody;
         }
 
-        String lowerMessage = message.toLowerCase();
-        if (statusCode == 401 || statusCode == 403) {
-            return "Token Hugging Face invalide ou non autorise. Verifiez HF_TOKEN et ses permissions Inference Providers.";
-        }
-        if (statusCode == 404 || lowerMessage.contains("model") && lowerMessage.contains("not")) {
-            return "Modele Hugging Face indisponible. Essayez HF_MODEL=Qwen/Qwen2.5-7B-Instruct ou choisissez un modele dans le Playground Hugging Face.";
-        }
-        if (statusCode == 429 || lowerMessage.contains("rate") || lowerMessage.contains("quota")) {
-            return "Limite Hugging Face atteinte. Reessayez plus tard ou utilisez un autre modele/projet Hugging Face.";
+        if (statusCode == 404) {
+            return "Service Ollama introuvable sur " + configuredBaseUrl() + ".";
         }
         if (statusCode >= 500) {
-            return "Service Hugging Face temporairement indisponible. Reessayez dans quelques instants.";
+            return "Service Ollama indisponible. Verifiez que Ollama est demarre.";
         }
-        return "Hugging Face a retourne HTTP " + statusCode + (message.isBlank() ? "." : ": " + message);
+        return "Ollama a retourne HTTP " + statusCode + (message.isBlank() ? "." : ": " + message);
     }
 
     private String cleanJsonText(String text) {
@@ -137,6 +156,20 @@ public class ForumAiRewriteService {
             cleaned = cleaned.replaceFirst("\\s*```$", "");
         }
         return cleaned.trim();
+    }
+
+    private String extractJsonObject(String text) throws IOException {
+        if (text == null || text.isBlank()) {
+            throw new IOException("La reponse IA est vide.");
+        }
+
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1).trim();
+        }
+
+        throw new IOException("La reponse IA ne contient pas de JSON exploitable.");
     }
 
     private String nullToEmpty(String value) {
