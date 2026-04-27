@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.ui.MainController">
+    <top>
+        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 14 0 14 0;" text="Mood &amp; Journal Manager" />
+    </top>
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="Mood CRUD">
+                    <content>
+                        <VBox spacing="12">
+                            <padding>
+                                <Insets bottom="14" left="14" right="14" top="14" />
+                            </padding>
+                            <GridPane hgap="10" vgap="10">
+                                <columnConstraints>
+                                    <ColumnConstraints halignment="RIGHT" minWidth="110" />
+                                    <ColumnConstraints hgrow="ALWAYS" />
+                                </columnConstraints>
+                                <Label text="Mood Type:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <TextField fx:id="moodTypeField" promptText="happy, sad, calm..." GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                <Label text="Mood Date:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <DatePicker fx:id="moodDatePicker" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                <Label text="Stress Level:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                <ComboBox fx:id="moodStressLevelField" promptText="1-10" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                <Label text="Energy Level:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                <ComboBox fx:id="moodEnergyLevelField" promptText="1-10" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+
+                                <Label text="Note:" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                                <TextArea fx:id="moodNoteArea" prefRowCount="3" promptText="optional note" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                        <rowConstraints>
+                            <RowConstraints />
+                            <RowConstraints />
+                            <RowConstraints />
+                            <RowConstraints />
+                            <RowConstraints />
+                        </rowConstraints>
+                            </GridPane>
+
+                            <HBox spacing="10">
+                                <Button onAction="#handleCreateMood" text="Create Mood" />
+                                <Button onAction="#handleUpdateMood" text="Update Selected" />
+                                <Button onAction="#handleDeleteMood" text="Delete Selected" />
+                                <Button onAction="#handleClearMoodForm" text="Clear Form" />
+                                <Button onAction="#handleRefreshMoods" text="Refresh" />
+                            </HBox>
+
+                            <HBox spacing="10">
+                                <Label text="Recherche:" />
+                                <TextField fx:id="moodSearchField" prefWidth="220" promptText="type ou note..." />
+                                <Label text="Tri:" />
+                                <ComboBox fx:id="moodSortCombo" prefWidth="180" />
+                                <Button onAction="#handleApplyMoodFilters" text="Appliquer" />
+                                <Button onAction="#handleResetMoodFilters" text="Reset" />
+                            </HBox>
+
+                            <Label fx:id="moodStatsLabel" text="Stats mood" />
+                            <Separator />
+
+                            <TableView fx:id="moodTable" prefHeight="320">
+                                <columns>
+                                    <TableColumn fx:id="moodIdColumn" prefWidth="70" text="ID" />
+                                    <TableColumn fx:id="moodTypeColumn" prefWidth="170" text="Mood Type" />
+                                    <TableColumn fx:id="moodDateColumn" prefWidth="150" text="Mood Date" />
+                                    <TableColumn fx:id="moodStressColumn" prefWidth="100" text="Stress" />
+                                    <TableColumn fx:id="moodEnergyColumn" prefWidth="100" text="Energy" />
+                                    <TableColumn fx:id="moodNoteColumn" prefWidth="360" text="Note" />
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </content>
+                </Tab>
+                <Tab text="Journal CRUD">
+                    <content>
+                        <VBox spacing="12">
+                            <padding>
+                                <Insets bottom="14" left="14" right="14" top="14" />
+                            </padding>
+                            <GridPane hgap="10" vgap="10">
+                                <columnConstraints>
+                                    <ColumnConstraints halignment="RIGHT" minWidth="110" />
+                                    <ColumnConstraints hgrow="ALWAYS" />
+                                </columnConstraints>
+                                <Label text="Title:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <TextField fx:id="journalTitleField" promptText="journal title" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                <Label text="Content:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <TextArea fx:id="journalContentArea" prefRowCount="4" promptText="write your entry..." GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                <Label text="Entry Date:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                <DatePicker fx:id="journalDatePicker" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                <Label text="Mood ID:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                <TextField fx:id="journalMoodIdField" promptText="optional mood id (empty = none)" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                        <rowConstraints>
+                           <RowConstraints />
+                           <RowConstraints />
+                           <RowConstraints />
+                           <RowConstraints />
+                        </rowConstraints>
+                            </GridPane>
+
+                            <HBox spacing="10">
+                                <Button onAction="#handleCreateJournal" text="Create Journal" />
+                                <Button onAction="#handleUpdateJournal" text="Update Selected" />
+                                <Button onAction="#handleDeleteJournal" text="Delete Selected" />
+                                <Button onAction="#handleClearJournalForm" text="Clear Form" />
+                                <Button onAction="#handleRefreshJournals" text="Refresh" />
+                            </HBox>
+
+                            <HBox spacing="10">
+                                <Label text="Recherche:" />
+                                <TextField fx:id="journalSearchField" prefWidth="220" promptText="title ou content..." />
+                                <Label text="Tri:" />
+                                <ComboBox fx:id="journalSortCombo" prefWidth="190" />
+                                <Button onAction="#handleApplyJournalFilters" text="Appliquer" />
+                                <Button onAction="#handleResetJournalFilters" text="Reset" />
+                            </HBox>
+
+                            <Label fx:id="journalStatsLabel" text="Stats journal" />
+                            <Separator />
+
+                            <TableView fx:id="journalTable" prefHeight="320">
+                                <columns>
+                                    <TableColumn fx:id="journalIdColumn" prefWidth="60" text="ID" />
+                                    <TableColumn fx:id="journalTitleColumn" prefWidth="170" text="Title" />
+                                    <TableColumn fx:id="journalContentColumn" prefWidth="300" text="Content" />
+                                    <TableColumn fx:id="journalDateColumn" prefWidth="130" text="Entry Date" />
+                                    <TableColumn fx:id="journalMoodIdColumn" prefWidth="100" text="Mood ID" />
+                                </columns>
+                            </TableView>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </center>
+</BorderPane>

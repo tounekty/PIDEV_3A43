@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefHeight="720.0" prefWidth="980.0" style="-fx-background-color: #EDF6FF;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+    <top>
+        <VBox BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="26.0" left="32.0" right="32.0" top="28.0" />
+            </padding>
+            <children>
+                <VBox spacing="18.0" style="-fx-background-color: linear-gradient(to right, #163D7A 0%, #1C4F96 55%, #245EBD 100%); -fx-background-radius: 30; -fx-effect: dropshadow(gaussian, rgba(22,61,122,0.26), 28, 0.2, 0, 10);">
+                    <padding>
+                        <Insets bottom="30.0" left="34.0" right="34.0" top="30.0" />
+                    </padding>
+                    <children>
+                        <HBox alignment="TOP_LEFT" spacing="16.0">
+                            <children>
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label text="Mindful journaling" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: rgba(255,255,255,0.78);" />
+                                        <Label text="MindCare" style="-fx-font-size: 38px; -fx-font-weight: 800; -fx-text-fill: #FFFFFF;" />
+                                        <Label text="Bienvenue Etudiant. Track your moods, capture your thoughts, and notice your patterns." maxWidth="520.0" wrapText="true" style="-fx-font-size: 15px; -fx-text-fill: rgba(255,255,255,0.82);" />
+                                    </children>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button mnemonicParsing="false" text="Retour login" style="-fx-padding: 12 20 12 20; -fx-font-size: 13px; -fx-font-weight: 700; -fx-background-color: rgba(255,255,255,0.12); -fx-text-fill: white; -fx-background-radius: 16; -fx-border-radius: 16; -fx-border-color: rgba(255,255,255,0.22); -fx-border-width: 1.1;" />
+                            </children>
+                        </HBox>
+                        <HBox spacing="14.0">
+                            <children>
+                                <VBox prefWidth="220.0" spacing="4.0" style="-fx-background-color: rgba(255,255,255,0.10); -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.16); -fx-border-radius: 20;">
+                                    <padding>
+                                        <Insets bottom="14.0" left="16.0" right="16.0" top="14.0" />
+                                    </padding>
+                                    <children>
+                                        <Label text="Mood log" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FFFFFF;" />
+                                        <Label text="Capture how today feels" wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.72);" />
+                                    </children>
+                                </VBox>
+                                <VBox prefWidth="220.0" spacing="4.0" style="-fx-background-color: rgba(255,255,255,0.10); -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.16); -fx-border-radius: 20;">
+                                    <padding>
+                                        <Insets bottom="14.0" left="16.0" right="16.0" top="14.0" />
+                                    </padding>
+                                    <children>
+                                        <Label text="Journal" style="-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #FFFFFF;" />
+                                        <Label text="Keep notes connected to emotions" wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.72);" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+    </top>
+    <center>
+        <StackPane BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="28.0" left="32.0" right="32.0" top="0.0" />
+            </padding>
+            <children>
+                <TabPane tabClosingPolicy="UNAVAILABLE" style="-fx-background-color: transparent;">
+                    <tabs>
+                        <Tab text="Mood">
+                            <content>
+                                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent;">
+                                    <content>
+                                        <VBox spacing="20.0">
+                                            <padding>
+                                                <Insets bottom="24.0" left="18.0" right="18.0" top="12.0" />
+                                            </padding>
+                                            <children>
+                                                <VBox spacing="4.0">
+                                                    <padding>
+                                                        <Insets bottom="2.0" left="4.0" right="4.0" top="4.0" />
+                                                    </padding>
+                                                    <children>
+                                                        <Label text="Mood workspace" style="-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #1C4F96;" />
+                                                        <Label text="Create, edit, and review your mood entries in one place." wrapText="true" style="-fx-font-size: 13px; -fx-text-fill: #6F87A6;" />
+                                                    </children>
+                                                </VBox>
+                                                <VBox spacing="18.0">
+                                                    <children>
+                                                        <VBox spacing="16.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Entry details" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <Label text="Fill in the fields below, then save or update your entry." wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                <VBox spacing="12.0">
+                                                                    <children>
+                                                                        <Label text="Mood Type:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <ComboBox promptText="Select mood" />
+                                                                        <Label text="Stress Level:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <ComboBox promptText="1-10" />
+                                                                        <Label text="Energy Level:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <ComboBox promptText="1-10" />
+                                                                        <Label text="Mood Date:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <DatePicker />
+                                                                        <Label text="Note:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <TextArea prefRowCount="4" promptText="optional note" wrapText="true" />
+                                                                    </children>
+                                                                </VBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="14.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Quick actions" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <Label text="Save a new entry, update the selected row, or clear the form." wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Button text="Create Mood" />
+                                                                        <Button text="Update selected" />
+                                                                        <Button text="Delete selected" style="-fx-background-color: linear-gradient(to right, #C63D48, #B4303A); -fx-text-fill: white;" />
+                                                                    </children>
+                                                                </HBox>
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Button text="Clear form" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                        <Button text="Refresh" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                        <Button text="Preventive Wellness Assistant" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                    </children>
+                                                                </HBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="16.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Find entries quickly" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <HBox spacing="12.0">
+                                                                    <children>
+                                                                        <VBox HBox.hgrow="ALWAYS" spacing="6.0">
+                                                                            <children>
+                                                                                <Label text="Search" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                                <TextField promptText="type ou note..." />
+                                                                            </children>
+                                                                        </VBox>
+                                                                        <VBox prefWidth="220.0" spacing="6.0">
+                                                                            <children>
+                                                                                <Label text="Sort" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                                <ComboBox promptText="Date desc" />
+                                                                            </children>
+                                                                        </VBox>
+                                                                    </children>
+                                                                </HBox>
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Region HBox.hgrow="ALWAYS" />
+                                                                        <Button text="Apply" />
+                                                                        <Button text="Reset" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                    </children>
+                                                                </HBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="14.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 26; -fx-border-color: #CFE3FF; -fx-border-radius: 26; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <HBox spacing="12.0">
+                                                                    <children>
+                                                                        <VBox spacing="4.0">
+                                                                            <children>
+                                                                                <Label text="Mood history" style="-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #1C4F96;" />
+                                                                                <Label text="Select a row to edit existing information." style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                            </children>
+                                                                        </VBox>
+                                                                        <Region HBox.hgrow="ALWAYS" />
+                                                                        <Label text="0 entries" style="-fx-font-size: 12px; -fx-padding: 8 14; -fx-background-color: #F9FBFF; -fx-background-radius: 999; -fx-border-color: #CFE3FF; -fx-border-radius: 999; -fx-border-width: 1; -fx-text-fill: #1C4F96; -fx-font-weight: 700;" />
+                                                                    </children>
+                                                                </HBox>
+                                                                <Separator />
+                                                                <TableView prefHeight="320.0">
+                                                                    <columns>
+                                                                        <TableColumn prefWidth="70.0" text="ID" />
+                                                                        <TableColumn prefWidth="170.0" text="Mood Type" />
+                                                                        <TableColumn prefWidth="150.0" text="Mood Date" />
+                                                                        <TableColumn prefWidth="100.0" text="Stress" />
+                                                                        <TableColumn prefWidth="100.0" text="Energy" />
+                                                                        <TableColumn prefWidth="360.0" text="Note" />
+                                                                    </columns>
+                                                                </TableView>
+                                                            </children>
+                                                        </VBox>
+                                                        <Label text="Mood insights" style="-fx-font-size: 18px; -fx-font-weight: 800; -fx-text-fill: #1C4F96; -fx-padding: 6 4 0 4;" />
+                                                        <HBox spacing="20.0">
+                                                            <children>
+                                                                <PieChart prefHeight="300.0" prefWidth="360.0" title="Mood distribution" />
+                                                                <BarChart prefHeight="300.0" prefWidth="360.0" title="Mood frequency">
+                                                                    <xAxis>
+                                                                        <CategoryAxis label="Mood" />
+                                                                    </xAxis>
+                                                                    <yAxis>
+                                                                        <NumberAxis label="Count" />
+                                                                    </yAxis>
+                                                                </BarChart>
+                                                            </children>
+                                                        </HBox>
+                                                    </children>
+                                                </VBox>
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </ScrollPane>
+                            </content>
+                        </Tab>
+                        <Tab text="Journal">
+                            <content>
+                                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent;">
+                                    <content>
+                                        <VBox spacing="20.0">
+                                            <padding>
+                                                <Insets bottom="24.0" left="18.0" right="18.0" top="12.0" />
+                                            </padding>
+                                            <children>
+                                                <VBox spacing="4.0">
+                                                    <padding>
+                                                        <Insets bottom="2.0" left="4.0" right="4.0" top="4.0" />
+                                                    </padding>
+                                                    <children>
+                                                        <Label text="Journal workspace" style="-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #1C4F96;" />
+                                                        <Label text="Create, edit, and review your journal entries in one place." wrapText="true" style="-fx-font-size: 13px; -fx-text-fill: #6F87A6;" />
+                                                    </children>
+                                                </VBox>
+                                                <VBox spacing="18.0">
+                                                    <children>
+                                                        <VBox spacing="16.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Entry details" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <Label text="Fill in the fields below, then save or update your entry." wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                <VBox spacing="12.0">
+                                                                    <children>
+                                                                        <Label text="Title:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <TextField promptText="journal title" />
+                                                                        <Label text="Content:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <TextArea prefRowCount="4" promptText="write your entry..." wrapText="true" />
+                                                                        <Label text="Entry Date:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <DatePicker />
+                                                                        <Label text="Mood ID:" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                        <TextField promptText="optional mood id (empty = none)" />
+                                                                    </children>
+                                                                </VBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="14.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Quick actions" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <Label text="Save a new entry, update the selected row, or clear the form." wrapText="true" style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Button text="Create Journal" />
+                                                                        <Button text="Update selected" />
+                                                                        <Button text="Delete selected" style="-fx-background-color: linear-gradient(to right, #C63D48, #B4303A); -fx-text-fill: white;" />
+                                                                    </children>
+                                                                </HBox>
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Button text="Clear form" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                        <Button text="Refresh" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                    </children>
+                                                                </HBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="16.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 24; -fx-border-color: #CFE3FF; -fx-border-radius: 24; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <Label text="Find entries quickly" style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                <HBox spacing="12.0">
+                                                                    <children>
+                                                                        <VBox HBox.hgrow="ALWAYS" spacing="6.0">
+                                                                            <children>
+                                                                                <Label text="Search" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                                <TextField promptText="title ou content..." />
+                                                                            </children>
+                                                                        </VBox>
+                                                                        <VBox prefWidth="220.0" spacing="6.0">
+                                                                            <children>
+                                                                                <Label text="Sort" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #1C4F96;" />
+                                                                                <ComboBox promptText="Date desc" />
+                                                                            </children>
+                                                                        </VBox>
+                                                                    </children>
+                                                                </HBox>
+                                                                <HBox spacing="10.0">
+                                                                    <children>
+                                                                        <Region HBox.hgrow="ALWAYS" />
+                                                                        <Button text="Apply" />
+                                                                        <Button text="Reset" style="-fx-background-color: #F9FBFF; -fx-text-fill: #1C4F96; -fx-border-color: #CFE3FF;" />
+                                                                    </children>
+                                                                </HBox>
+                                                            </children>
+                                                        </VBox>
+                                                        <VBox spacing="14.0" style="-fx-background-color: #FFFFFF; -fx-background-radius: 26; -fx-border-color: #CFE3FF; -fx-border-radius: 26; -fx-border-width: 1;">
+                                                            <padding>
+                                                                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                                                            </padding>
+                                                            <children>
+                                                                <HBox spacing="12.0">
+                                                                    <children>
+                                                                        <VBox spacing="4.0">
+                                                                            <children>
+                                                                                <Label text="Journal history" style="-fx-font-size: 16px; -fx-font-weight: 800; -fx-text-fill: #1C4F96;" />
+                                                                                <Label text="Select a row to edit existing information." style="-fx-font-size: 12px; -fx-text-fill: #6F87A6;" />
+                                                                            </children>
+                                                                        </VBox>
+                                                                        <Region HBox.hgrow="ALWAYS" />
+                                                                        <Label text="0 entries" style="-fx-font-size: 12px; -fx-padding: 8 14; -fx-background-color: #F9FBFF; -fx-background-radius: 999; -fx-border-color: #CFE3FF; -fx-border-radius: 999; -fx-border-width: 1; -fx-text-fill: #1C4F96; -fx-font-weight: 700;" />
+                                                                    </children>
+                                                                </HBox>
+                                                                <Separator />
+                                                                <TableView prefHeight="320.0">
+                                                                    <columns>
+                                                                        <TableColumn prefWidth="60.0" text="ID" />
+                                                                        <TableColumn prefWidth="170.0" text="Title" />
+                                                                        <TableColumn prefWidth="300.0" text="Content" />
+                                                                        <TableColumn prefWidth="130.0" text="Entry Date" />
+                                                                        <TableColumn prefWidth="100.0" text="Mood ID" />
+                                                                    </columns>
+                                                                </TableView>
+                                                            </children>
+                                                        </VBox>
+                                                    </children>
+                                                </VBox>
+                                            </children>
+                                        </VBox>
+                                    </content>
+                                </ScrollPane>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+            </children>
+        </StackPane>
+    </center>
+</BorderPane>
