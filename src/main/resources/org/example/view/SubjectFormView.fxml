@@ -90,6 +90,7 @@
                             </children>
                         </GridPane>
                         <HBox spacing="12">
+                            <Button fx:id="subjectAiRewriteButton" text="Reformuler avec IA" onAction="#handleSubjectAiRewrite" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
                             <Button fx:id="subjectSaveButton" text="Publier" onAction="#handleSubjectSave" style="-fx-background-color: linear-gradient(to right,#0f69ff,#38a4ff); -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 12 18 12 18;" />
                             <Button fx:id="subjectCancelButton" text="Annuler" onAction="#handleSubjectCancel" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
                         </HBox>

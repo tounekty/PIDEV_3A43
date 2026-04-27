@@ -1,6 +1,7 @@
 package org.example.view;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -20,6 +21,7 @@ import javafx.stage.Stage;
 import org.example.model.User;
 import org.example.model.Event;
 import org.example.model.ForumMessage;
+import org.example.model.ForumRewriteSuggestion;
 import org.example.model.ForumSubject;
 import org.example.model.ReservationRecord;
 import org.example.controller.AuthController;
@@ -27,6 +29,7 @@ import org.example.controller.EventController;
 import org.example.controller.ForumMessageController;
 import org.example.controller.ForumController;
 import org.example.controller.ReservationController;
+import org.example.service.ForumAiRewriteService;
 import org.example.service.MentionNotificationResult;
 import org.example.service.MentionNotificationService;
 
@@ -39,6 +42,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class Main extends Application {
     private static final DateTimeFormatter EVENT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -60,6 +65,7 @@ public class Main extends Application {
     private final ReservationController reservationService = new ReservationController();
     private final ForumController forumService = new ForumController();
     private final ForumMessageController forumMessageService = new ForumMessageController();
+    private final ForumAiRewriteService forumAiRewriteService = new ForumAiRewriteService();
     private final MentionNotificationService mentionNotificationService = new MentionNotificationService();
     private final Map<Integer, Integer> reservationCounts = new HashMap<>();
     private final Map<Integer, ForumMessage> messageIndexById = new HashMap<>();
@@ -149,6 +155,7 @@ public class Main extends Application {
     @FXML private ImageView subjectImagePreview;
     @FXML private CheckBox subjectPinnedCheck;
     @FXML private CheckBox subjectAnonymousCheck;
+    @FXML private Button subjectAiRewriteButton;
     @FXML private Button subjectSaveButton;
     @FXML private Button subjectCancelButton;
     @FXML private TextArea messageContentArea;
@@ -584,6 +591,11 @@ public class Main extends Application {
     @FXML
     private void handleSubjectImageClear() {
         clearSubjectImage();
+    }
+
+    @FXML
+    private void handleSubjectAiRewrite() {
+        rewriteSubjectWithAi();
     }
 
     @FXML
@@ -1105,6 +1117,70 @@ public class Main extends Application {
         } catch (SQLException e) {
             setInlineError(subjectErrorLabel, "Enregistrement impossible: " + e.getMessage());
         }
+    }
+
+    private void rewriteSubjectWithAi() {
+        clearInlineError(subjectErrorLabel);
+        String title = subjectTitleField.getText() == null ? "" : subjectTitleField.getText().trim();
+        String description = subjectDescriptionArea.getText() == null ? "" : subjectDescriptionArea.getText().trim();
+
+        if (title.isBlank() && description.isBlank()) {
+            setInlineError(subjectErrorLabel, "Ecrivez un titre ou une description avant la reformulation.");
+            return;
+        }
+        if (!forumAiRewriteService.isConfigured()) {
+            setInlineError(subjectErrorLabel, "HF_TOKEN n'est pas configure. Ajoutez la variable puis relancez l'application.");
+            return;
+        }
+
+        setSubjectAiRewriteRunning(true);
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        return forumAiRewriteService.rewriteSubject(title, description);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .whenComplete((suggestion, error) -> Platform.runLater(() -> {
+                    setSubjectAiRewriteRunning(false);
+                    if (error != null) {
+                        Throwable cause = unwrapAsyncError(error);
+                        setInlineError(subjectErrorLabel, "Reformulation IA impossible: " + cause.getMessage());
+                        return;
+                    }
+                    applySubjectRewriteSuggestion(suggestion);
+                }));
+    }
+
+    private void setSubjectAiRewriteRunning(boolean running) {
+        if (subjectAiRewriteButton != null) {
+            subjectAiRewriteButton.setDisable(running);
+            subjectAiRewriteButton.setText(running ? "Reformulation..." : "Reformuler avec IA");
+        }
+        if (subjectSaveButton != null) {
+            subjectSaveButton.setDisable(running);
+        }
+    }
+
+    private void applySubjectRewriteSuggestion(ForumRewriteSuggestion suggestion) {
+        if (suggestion == null) {
+            setInlineError(subjectErrorLabel, "Reponse IA vide.");
+            return;
+        }
+        subjectTitleField.setText(suggestion.getTitle());
+        subjectDescriptionArea.setText(suggestion.getDescription());
+        clearInlineError(subjectErrorLabel);
+        showInfo("Reformulation IA", "Le sujet a ete reformule. Relisez puis cliquez sur Publier.");
+    }
+
+    private Throwable unwrapAsyncError(Throwable error) {
+        Throwable current = error;
+        while ((current instanceof CompletionException || current instanceof RuntimeException)
+                && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     private void selectStatusButton(String status) {
