@@ -23,7 +23,11 @@ public class EmailService {
     public EmailService() {
         this.host = firstConfigured("SMTP_HOST", "mail.smtp.host");
         this.port = firstConfigured("SMTP_PORT", "mail.smtp.port", "587");
-        this.username = firstConfigured("SMTP_USERNAME", "mail.smtp.user");
+        this.username = firstConfiguredAny(
+                new String[]{"SMTP_USERNAME", "SMTP_USER"},
+                new String[]{"mail.smtp.user"},
+                null
+        );
         this.password = firstConfigured("SMTP_PASSWORD", "mail.smtp.password");
         this.from = firstConfigured("SMTP_FROM", "mail.smtp.from", username);
         this.authEnabled = Boolean.parseBoolean(firstConfigured("SMTP_AUTH", "mail.smtp.auth", username != null && !username.isBlank() ? "true" : "false"));
@@ -84,6 +88,28 @@ public class EmailService {
         if (propertyValue != null && !propertyValue.isBlank()) {
             return propertyValue.trim();
         }
+        return defaultValue;
+    }
+
+    private String firstConfiguredAny(String[] envNames, String[] propertyNames, String defaultValue) {
+        if (envNames != null) {
+            for (String envName : envNames) {
+                String envValue = System.getenv(envName);
+                if (envValue != null && !envValue.isBlank()) {
+                    return envValue.trim();
+                }
+            }
+        }
+
+        if (propertyNames != null) {
+            for (String propertyName : propertyNames) {
+                String propertyValue = System.getProperty(propertyName);
+                if (propertyValue != null && !propertyValue.isBlank()) {
+                    return propertyValue.trim();
+                }
+            }
+        }
+
         return defaultValue;
     }
 }

@@ -1113,7 +1113,7 @@ public class Main extends Application {
         boolean editing = subject != null;
         subjectSaveButton.setText(editing ? "Enregistrer" : "Publier");
         if (subjectFormTitle != null) {
-            subjectFormTitle.setText(editing ? "Modifier sujet #" + subject.getId() : "Nouveau sujet");
+            subjectFormTitle.setText(editing ? "Modifier sujet" : "Nouveau sujet");
         }
         subjectCancelButton.setVisible(true);
         subjectCancelButton.setManaged(true);
@@ -1368,6 +1368,12 @@ public class Main extends Application {
 
     private String notifySubjectMentions(ForumSubject subject) {
         try {
+            // Debug: show extracted mentions
+            Set<String> mentions = mentionNotificationService.extractMentionedUsernames(
+                subject.getTitre(), subject.getDescription());
+            if (!mentions.isEmpty()) {
+                System.out.println("[DEBUG] Mentions detectees dans sujet: " + mentions);
+            }
             return formatMentionNotification(mentionNotificationService.notifySubjectMentions(subject, currentUser));
         } catch (SQLException e) {
             return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
@@ -1376,6 +1382,11 @@ public class Main extends Application {
 
     private String notifyMessageMentions(ForumMessage message) {
         try {
+            // Debug: show extracted mentions
+            Set<String> mentions = mentionNotificationService.extractMentionedUsernames(message.getContenu());
+            if (!mentions.isEmpty()) {
+                System.out.println("[DEBUG] Mentions detectees dans message: " + mentions);
+            }
             return formatMentionNotification(mentionNotificationService.notifyMessageMentions(currentSubject, message, currentUser));
         } catch (SQLException e) {
             return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
@@ -1387,13 +1398,15 @@ public class Main extends Application {
             return "";
         }
         if (!result.isMailConfigured()) {
-            return "\n" + result.getMentionedUsers() + " mention(s) trouvee(s). Configurez SMTP_HOST et SMTP_FROM pour envoyer les e-mails.";
+            return "\n✓ " + result.getMentionedUsers() + " mention(s) trouvee(s) et detectable(s).\nConfigurez SMTP_HOST et SMTP_FROM pour envoyer les e-mails de notification.";
         }
         if (result.getEmailsSent() == result.getMentionedUsers()) {
-            return "\nE-mail envoye a " + result.getEmailsSent() + " personne(s) mentionnee(s).";
+            return "\n✓ E-mail(s) envoye(s) a " + result.getEmailsSent() + " personne(s) mentionnee(s).";
         }
         String detail = result.getFirstError().isBlank() ? "" : "\nErreur: " + result.getFirstError();
-        return "\nE-mails envoyes: " + result.getEmailsSent() + ", echecs: " + result.getEmailsFailed() + "." + detail;
+        return "\n✓ Mentions detectees: " + result.getMentionedUsers() + 
+               " | E-mails envoyes: " + result.getEmailsSent() + 
+               ", echecs: " + result.getEmailsFailed() + "." + detail;
     }
 
     private void deleteMessage(ForumMessage message) {
@@ -1481,7 +1494,7 @@ public class Main extends Application {
             return "Anonyme";
         }
         if (message.getUsername() == null || message.getUsername().isBlank()) {
-            return "Utilisateur #" + message.getIdUser();
+            return "Utilisateur";
         }
         return message.getUsername();
     }
@@ -1507,7 +1520,7 @@ public class Main extends Application {
         }
 
         replyingToMessage = message;
-        String author = message.isAnonymous() ? "Anonyme" : (message.getUsername() == null ? "Utilisateur #" + message.getIdUser() : message.getUsername());
+        String author = message.isAnonymous() ? "Anonyme" : (message.getUsername() == null ? "Utilisateur" : message.getUsername());
         String preview = message.getContenu() == null ? "" : message.getContenu().trim();
         if (preview.length() > 40) {
             preview = preview.substring(0, 40) + "...";

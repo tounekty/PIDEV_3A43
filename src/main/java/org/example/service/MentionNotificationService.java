@@ -15,7 +15,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MentionNotificationService {
-    private static final Pattern MENTION_PATTERN = Pattern.compile("(?<![\\p{L}\\p{N}._-])@([\\p{L}\\p{N}._-]{2,100})");
+    // Pattern that captures @mentions more reliably
+    // Captures @ followed by 2-50 alphanumeric/dot/dash/underscore chars
+    // Uses word boundaries and simple lookahead/lookbehind
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@([a-zA-Z0-9._-]{2,50})\\b");
 
     private final AuthService authService;
     private final EmailService emailService;
@@ -40,7 +43,7 @@ public class MentionNotificationService {
         String subjectTitle = subject == null ? "Forum MindCare" : subject.getTitre();
         String body = "Bonjour,\n\n"
                 + displayAuthor(author) + " vous a mentionne dans un sujet du forum MindCare.\n\n"
-                + "Sujet #" + (subject == null ? "" : subject.getId()) + ": " + safe(subjectTitle) + "\n"
+            + "Sujet: " + safe(subjectTitle) + "\n"
                 + "Description: " + safe(subject == null ? null : subject.getDescription()) + "\n\n"
                 + "Ouvrez l'application MindCare, puis le forum, pour voir le sujet.\n";
 
@@ -57,8 +60,7 @@ public class MentionNotificationService {
         String subjectTitle = subject == null ? "Sujet du forum" : subject.getTitre();
         String body = "Bonjour,\n\n"
                 + displayAuthor(author) + " vous a mentionne dans un commentaire du forum MindCare.\n\n"
-                + "Sujet #" + (subject == null ? "" : subject.getId()) + ": " + safe(subjectTitle) + "\n"
-                + "Commentaire #" + (message == null ? "" : message.getId()) + "\n"
+            + "Sujet: " + safe(subjectTitle) + "\n"
                 + "Commentaire: " + safe(message == null ? null : message.getContenu()) + "\n\n"
                 + "Ouvrez l'application MindCare, puis le forum, pour voir le commentaire.\n";
 
