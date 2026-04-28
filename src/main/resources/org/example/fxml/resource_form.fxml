@@ -17,6 +17,22 @@
         <Label text="Formulaire Ressource" styleClass="admin-title"/>
         <Label text="Créer ou modifier une ressource" styleClass="admin-subtitle"/>
     </VBox>
+
+    <!-- Génération IA -->
+    <VBox spacing="10" styleClass="ai-panel">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Assistant IA" styleClass="section-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="aiStatusLabel" text="Prêt" styleClass="meta-text"/>
+        </HBox>
+        <TextArea fx:id="aiPromptField"
+                  promptText="Exemple: Crée une ressource sur la gestion du stress chez les étudiants, avec des conseils simples et bienveillants."
+                  wrapText="true" prefHeight="95" styleClass="admin-input"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Button fx:id="generateAiBtn" text="Générer" onAction="#handleGenerateWithAi" styleClass="btn-primary"/>
+            <Button fx:id="clearAiBtn" text="Effacer prompt" onAction="#handleClearAiPrompt" styleClass="btn-secondary"/>
+        </HBox>
+    </VBox>
     
     <!-- Titre -->
     <Label text="Titre" styleClass="field-label"/>
@@ -25,7 +41,7 @@
     <!-- Description -->
     <Label text="Description" styleClass="field-label"/>
     <TextArea fx:id="descriptionField" promptText="Description détaillée (min. 10 caractères)" 
-              wrapText="true" prefHeight="100" styleClass="admin-input"/>
+              wrapText="true" prefHeight="170" minHeight="150" styleClass="description-area"/>
     
     <!-- Type -->
     <Label text="Type" styleClass="field-label"/>
@@ -39,9 +55,30 @@
     <Label text="URL Vidéo (optionnel)" styleClass="field-label"/>
     <TextField fx:id="videoUrlField" promptText="https://www.youtube.com/watch?v=..." styleClass="admin-input"/>
     
-    <!-- URL Image -->
-    <Label text="URL Image (optionnel)" styleClass="field-label"/>
-    <TextField fx:id="imageUrlField" promptText="https://example.com/image.jpg" styleClass="admin-input"/>
+    <!-- Visuel optionnel -->
+    <VBox spacing="10" styleClass="ai-panel">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Image de la ressource" styleClass="section-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="imageStatusLabel" text="Choisissez une option" styleClass="meta-text"/>
+        </HBox>
+
+        <Label text="Méthode image" styleClass="field-label"/>
+        <ComboBox fx:id="imageModeCombo" prefWidth="220" styleClass="admin-input"/>
+
+        <Label text="Lien visuel" styleClass="field-label"/>
+        <TextField fx:id="imageUrlField" promptText="https://example.com/visuel.jpg ou fichier généré" styleClass="admin-input"/>
+
+        <Label text="Prompt image IA" styleClass="field-label"/>
+        <TextArea fx:id="imagePromptField"
+                  promptText="Exemple: illustration moderne sur la santé mentale des étudiants, ambiance calme, couleurs douces"
+                  wrapText="true" prefHeight="85" styleClass="admin-input"/>
+
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Button fx:id="generateImageBtn" text="Générer image" onAction="#handleGenerateImageWithAi" styleClass="btn-primary"/>
+            <Button fx:id="clearImageBtn" text="Effacer image" onAction="#handleClearImage" styleClass="btn-secondary"/>
+        </HBox>
+    </VBox>
     
     <!-- Boutons -->
     <HBox spacing="10" alignment="CENTER_LEFT" styleClass="actions-row">

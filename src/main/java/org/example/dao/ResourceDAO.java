@@ -19,9 +19,9 @@ public class ResourceDAO {
             stmt.setString(1, resource.getTitle());
             stmt.setString(2, resource.getDescription());
             stmt.setString(3, resource.getType());
-            stmt.setString(4, resource.getFilePath());
-            stmt.setString(5, resource.getVideoUrl());
-            stmt.setString(6, resource.getImageUrl());
+            stmt.setString(4, blankToNull(resource.getFilePath()));
+            stmt.setString(5, blankToNull(resource.getVideoUrl()));
+            stmt.setString(6, blankToNull(resource.getImageUrl()));
             stmt.setInt(7, persistedUserId);
             
             stmt.executeUpdate();
@@ -98,9 +98,9 @@ public class ResourceDAO {
             stmt.setString(1, resource.getTitle());
             stmt.setString(2, resource.getDescription());
             stmt.setString(3, resource.getType());
-            stmt.setString(4, resource.getFilePath());
-            stmt.setString(5, resource.getVideoUrl());
-            stmt.setString(6, resource.getImageUrl());
+            stmt.setString(4, blankToNull(resource.getFilePath()));
+            stmt.setString(5, blankToNull(resource.getVideoUrl()));
+            stmt.setString(6, blankToNull(resource.getImageUrl()));
             stmt.setInt(7, resource.getId());
             
             stmt.executeUpdate();
@@ -153,5 +153,12 @@ public class ResourceDAO {
         resource.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         resource.setUserId(rs.getInt("id_user"));
         return resource;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value.trim();
     }
 }

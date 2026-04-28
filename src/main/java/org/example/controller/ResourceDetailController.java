@@ -16,8 +16,12 @@ import java.util.Locale;
 import org.example.model.Commentaire;
 import org.example.model.Resource;
 import org.example.service.CommentaireService;
+import org.example.service.GTTSTextToSpeechService;
 import org.example.service.ResourceService;
+import org.example.service.TranslationService;
+import org.example.ui.UIAnimationService;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -40,6 +44,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 
@@ -48,6 +54,11 @@ public class ResourceDetailController {
     @FXML private Label typeLabel;
     @FXML private TextArea descriptionArea;
     @FXML private Label createdAtLabel;
+    @FXML private Button ttsPlayBtn;
+    @FXML private ComboBox<String> ttsVoiceCombo;
+    @FXML private ComboBox<String> ttsSpeedCombo;
+    @FXML private ComboBox<String> translationDescLangCombo;
+    @FXML private Button translateDescBtn;
     @FXML private VBox imageSection;
     @FXML private ImageView resourceImageView;
     @FXML private Label imageErrorLabel;
@@ -58,6 +69,8 @@ public class ResourceDetailController {
     @FXML private ComboBox<String> statusFilterCombo;
     @FXML private ComboBox<String> ratingFilterCombo;
     @FXML private ComboBox<String> sortCommentCombo;
+    @FXML private ComboBox<String> translationLangCombo;
+    @FXML private Button translateCommentBtn;
     @FXML private ListView<Commentaire> commentaireListView;
     @FXML private Button addCommentBtn;
     @FXML private Button deleteCommentBtn;
@@ -72,6 +85,7 @@ public class ResourceDetailController {
     private boolean adminMode = false;
     private int currentUserId = 1;
     private String currentVideoUrl;
+    private MediaPlayer mediaPlayer;
     
     @FXML
     public void initialize() {
@@ -82,6 +96,28 @@ public class ResourceDetailController {
         ratingFilterCombo.setValue("Toutes notes");
         sortCommentCombo.getItems().setAll("Plus récents", "Plus anciens", "Note haute", "Note basse", "Auteur A-Z");
         sortCommentCombo.setValue("Plus récents");
+
+        if (ttsVoiceCombo != null) {
+            ttsVoiceCombo.getItems().setAll("Féminine", "Masculine", "Standard");
+            ttsVoiceCombo.setValue("Féminine");
+        }
+
+        if (ttsSpeedCombo != null) {
+            ttsSpeedCombo.getItems().setAll("Lente", "Normale", "Rapide");
+            ttsSpeedCombo.setValue("Normale");
+        }
+        
+        // Initialisation traduction
+        java.util.List<String> langLabels = new java.util.ArrayList<>();
+        for (TranslationService.Language lang : TranslationService.getAvailableLanguages()) {
+            langLabels.add(lang.code.toUpperCase() + " - " + lang.label);
+        }
+        translationLangCombo.getItems().setAll(langLabels);
+        translationLangCombo.setValue("EN - English");
+        
+        translationDescLangCombo.getItems().setAll(langLabels);
+        translationDescLangCombo.setValue("EN - English");
+        
         searchCommentField.textProperty().addListener((obs, oldVal, newVal) -> applyCommentFilters());
         statusFilterCombo.valueProperty().addListener((obs, oldVal, newVal) -> applyCommentFilters());
         ratingFilterCombo.valueProperty().addListener((obs, oldVal, newVal) -> applyCommentFilters());
@@ -99,10 +135,6 @@ public class ResourceDetailController {
         if (approveCommentBtn != null) {
             approveCommentBtn.setVisible(adminMode);
             approveCommentBtn.setManaged(adminMode);
-        }
-        if (deleteCommentBtn != null) {
-            deleteCommentBtn.setVisible(adminMode);
-            deleteCommentBtn.setManaged(adminMode);
         }
     }
 
@@ -373,6 +405,117 @@ public class ResourceDetailController {
         return value == null ? "" : value;
     }
 
+    @FXML
+    private void handlePlayDescription() {
+        if (mediaPlayer != null && mediaPlayer.getStatus() != MediaPlayer.Status.STOPPED) {
+            stopDescriptionPlayback();
+            return;
+        }
+
+        String text = descriptionArea.getText();
+        if (text == null || text.trim().isEmpty()) {
+            showWarning("Description vide. Rien à lire.");
+            return;
+        }
+
+        ttsPlayBtn.setDisable(true);
+        ttsPlayBtn.setText("");
+        ttsPlayBtn.setGraphic(new javafx.scene.control.Label("⏳ Synthèse..."));
+
+        // Run synthesis in background
+        new Thread(() -> {
+            try {
+                String voice = resolveSelectedVoice();
+                int speed = resolveSelectedSpeechRate();
+                String mp3Path = GTTSTextToSpeechService.synthesizeToFile(text, "fr-FR", voice, speed);
+                Platform.runLater(() -> playAudio(mp3Path));
+            } catch (IOException e) {
+                Platform.runLater(() -> {
+                    showError("Erreur TTS: " + e.getMessage());
+                    ttsPlayBtn.setDisable(false);
+                    ttsPlayBtn.setText("");
+                    ttsPlayBtn.setGraphic(UIAnimationService.createPlayIcon());
+                });
+            }
+        }).start();
+    }
+
+    private String resolveSelectedVoice() {
+        String selected = ttsVoiceCombo == null ? null : ttsVoiceCombo.getValue();
+        if (selected == null) {
+            return "fr+f3";
+        }
+
+        return switch (selected) {
+            case "Masculine" -> "fr+m3";
+            case "Standard" -> "fr";
+            default -> "fr+f3";
+        };
+    }
+
+    private int resolveSelectedSpeechRate() {
+        String selected = ttsSpeedCombo == null ? null : ttsSpeedCombo.getValue();
+        if (selected == null) {
+            return 140;
+        }
+
+        return switch (selected) {
+            case "Lente" -> 120;
+            case "Rapide" -> 180;
+            default -> 140;
+        };
+    }
+
+    private void stopDescriptionPlayback() {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+                mediaPlayer = null;
+            }
+        } finally {
+            ttsPlayBtn.setDisable(false);
+            ttsPlayBtn.setText("");
+            ttsPlayBtn.setGraphic(UIAnimationService.createPlayIcon());
+        }
+    }
+
+    private void playAudio(String filePath) {
+        try {
+            // Stop previous player if exists
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+                mediaPlayer = null;
+            }
+
+            File audioFile = new File(filePath);
+            String audioUrl = audioFile.toURI().toString();
+            Media media = new Media(audioUrl);
+            mediaPlayer = new MediaPlayer(media);
+            ttsPlayBtn.setDisable(false);
+
+            mediaPlayer.setOnReady(() -> {
+                mediaPlayer.play();
+                ttsPlayBtn.setText("");
+                ttsPlayBtn.setGraphic(UIAnimationService.createStopIcon());
+            });
+
+            mediaPlayer.setOnEndOfMedia(() -> {
+                stopDescriptionPlayback();
+            });
+
+            mediaPlayer.setOnError(() -> {
+                showError("Erreur lecture MP3: " + (mediaPlayer == null ? "unknown" : mediaPlayer.getError()));
+                stopDescriptionPlayback();
+            });
+        } catch (Exception e) {
+            showError("Erreur initialisation lecteur: " + e.getMessage());
+            ttsPlayBtn.setDisable(false);
+            ttsPlayBtn.setText("");
+            ttsPlayBtn.setGraphic(UIAnimationService.createPlayIcon());
+        }
+    }
 
     @FXML
     private void handleAddComment() {
@@ -404,11 +547,24 @@ public class ResourceDetailController {
             return;
         }
         
-        if (confirmDelete()) {
+        // Vérifier les permissions
+        boolean isOwner = selected.getUserId() == currentUserId;
+        boolean isAdmin = adminMode;
+        
+        if (!isOwner && !isAdmin) {
+            showWarning("Vous ne pouvez supprimer que vos propres commentaires");
+            return;
+        }
+        
+        String deleteMsg = isOwner && !isAdmin 
+            ? "Êtes-vous sûr de vouloir supprimer votre commentaire ?" 
+            : "Êtes-vous sûr de vouloir supprimer ce commentaire ?";
+        
+        if (confirmDelete(deleteMsg)) {
             try {
                 commentaireService.deleteCommentaire(selected.getId());
                 loadCommentaires();
-                showInfo("Commentaire supprimé");
+                showInfo("Commentaire supprimé avec succès");
             } catch (SQLException e) {
                 showError("Erreur suppression: " + e.getMessage());
             }
@@ -429,6 +585,112 @@ public class ResourceDetailController {
             showInfo("Commentaire approuvé");
         } catch (SQLException e) {
             showError("Erreur approbation: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    private void handleTranslateComments() {
+        if (commentaireList == null || commentaireList.isEmpty()) {
+            showWarning("Aucun commentaire à traduire");
+            return;
+        }
+        
+        String selected = translationLangCombo.getValue();
+        if (selected == null || selected.isEmpty()) {
+            showWarning("Sélectionnez une langue cible");
+            return;
+        }
+        
+        // Extraire le code langue
+        String targetLang = selected.split(" - ")[0].toLowerCase();
+        String sourceLang = "fr";
+        
+        System.out.println("Starting translation to: " + targetLang);
+        
+        try {
+            int translatedCount = 0;
+            for (Commentaire comment : commentaireList) {
+                String originalContent = comment.getContent();
+                
+                // Vérifier si déjà traduit
+                if (originalContent.startsWith("🌍 [")) {
+                    System.out.println("Skipping already translated comment");
+                    continue;
+                }
+                
+                System.out.println("Translating: " + originalContent);
+                String translatedContent = TranslationService.translate(originalContent, sourceLang, targetLang);
+                System.out.println("Result: " + translatedContent);
+                
+                // Vérifier si la traduction est différente
+                if (!translatedContent.equals(originalContent)) {
+                    // Succès - ajouter le marqueur
+                    String markedContent = "🌍 [" + targetLang.toUpperCase() + "] " + translatedContent + "\n\n📝 " + originalContent;
+                    comment.setContent(markedContent);
+                    translatedCount++;
+                } else {
+                    System.out.println("Translation returned same text");
+                }
+            }
+            
+            commentaireListView.refresh();
+            if (translatedCount > 0) {
+                showInfo("✅ " + translatedCount + " commentaire(s) traduit(s) en " + selected.split(" - ")[1]);
+            } else {
+                showWarning("⚠️ Aucun commentaire n'a pu être traduit. Vérifiez votre connexion internet.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error in handleTranslateComments: " + e.getMessage());
+            e.printStackTrace();
+            showError("Erreur traduction: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    private void handleTranslateDescription() {
+        String description = descriptionArea.getText();
+        if (description == null || description.isBlank()) {
+            showWarning("Aucune description à traduire");
+            return;
+        }
+        
+        String selected = translationDescLangCombo.getValue();
+        if (selected == null || selected.isEmpty()) {
+            showWarning("Sélectionnez une langue cible");
+            return;
+        }
+        
+        // Extraire le code langue
+        String targetLang = selected.split(" - ")[0].toLowerCase();
+        String sourceLang = "fr";
+        
+        System.out.println("Starting description translation to: " + targetLang);
+        
+        try {
+            // Vérifier si déjà traduite
+            if (description.startsWith("🌍 [")) {
+                showWarning("Description déjà traduite. Rechargez la ressource pour réinitialiser.");
+                return;
+            }
+            
+            System.out.println("Translating description: " + description);
+            String translatedDesc = TranslationService.translate(description, sourceLang, targetLang);
+            System.out.println("Translation result: " + translatedDesc);
+            
+            // Vérifier si traduction réussie
+            if (!translatedDesc.equals(description)) {
+                // Succès - modifier le TextArea
+                String markedDescription = "🌍 [" + targetLang.toUpperCase() + "]\n" + translatedDesc + "\n\n📝 Original:\n" + description;
+                descriptionArea.setText(markedDescription);
+                descriptionArea.setWrapText(true);
+                showInfo("✅ Description traduite en " + selected.split(" - ")[1]);
+            } else {
+                showWarning("⚠️ La description n'a pas pu être traduite. Vérifiez votre connexion internet.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error in handleTranslateDescription: " + e.getMessage());
+            e.printStackTrace();
+            showError("Erreur traduction description: " + e.getMessage());
         }
     }
     
@@ -453,10 +715,10 @@ public class ResourceDetailController {
         alert.showAndWait();
     }
     
-    private boolean confirmDelete() {
+    private boolean confirmDelete(String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Confirmer la suppression");
-        alert.setContentText("Êtes-vous sûr de vouloir supprimer ce commentaire?");
+        alert.setContentText(message);
         return alert.showAndWait().filter(response -> response == ButtonType.OK).isPresent();
     }
 
@@ -488,9 +750,37 @@ public class ResourceDetailController {
 
             Label content = new Label(c.getContent());
             content.setWrapText(true);
-            content.setStyle("-fx-text-fill:#4a607f; -fx-font-size: 13px;");
+            // Like/Dislike buttons
+            Button likeBtn = new Button(" " + c.getLikeCount());
+            likeBtn.setGraphic(UIAnimationService.createLikeIcon());
+            likeBtn.setStyle("-fx-background-color: #f0f4f8; -fx-border-color: #d0dce8; -fx-padding: 6 10 6 10; -fx-background-radius: 8; -fx-font-size: 11px; -fx-cursor: hand;");
+            likeBtn.setOnAction(e -> {
+                try {
+                    commentaireService.addLike(c.getId());
+                    c.setLikeCount(c.getLikeCount() + 1);
+                    likeBtn.setText(" " + c.getLikeCount());
+                } catch (SQLException ex) {
+                    showError("Erreur like: " + ex.getMessage());
+                }
+            });
 
-            VBox card = new VBox(8, head, content);
+            Button dislikeBtn = new Button(" " + c.getDislikeCount());
+            dislikeBtn.setGraphic(UIAnimationService.createDislikeIcon());
+            dislikeBtn.setStyle("-fx-background-color: #f0f4f8; -fx-border-color: #d0dce8; -fx-padding: 6 10 6 10; -fx-background-radius: 8; -fx-font-size: 11px; -fx-cursor: hand;");
+            dislikeBtn.setOnAction(e -> {
+                try {
+                    commentaireService.addDislike(c.getId());
+                    c.setDislikeCount(c.getDislikeCount() + 1);
+                    dislikeBtn.setText(" " + c.getDislikeCount());
+                } catch (SQLException ex) {
+                    showError("Erreur dislike: " + ex.getMessage());
+                }
+            });
+
+            HBox likeBox = new HBox(8, likeBtn, dislikeBtn);
+            likeBox.setAlignment(Pos.CENTER_LEFT);
+
+            VBox card = new VBox(8, head, content, likeBox);
             card.setPadding(new Insets(12));
             card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #d9e7fb;");
 

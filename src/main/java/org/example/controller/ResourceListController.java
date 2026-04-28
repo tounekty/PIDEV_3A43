@@ -441,9 +441,9 @@ public class ResourceListController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/fxml/resource_form.fxml"));
             Stage stage = new Stage();
             stage.setTitle(resource == null ? "Nouvelle Ressource" : "Modifier Ressource");
-            stage.setScene(new Scene(loader.load(), 760, 720));
-            stage.setMinWidth(680);
-            stage.setMinHeight(620);
+            stage.setScene(new Scene(loader.load(), 720, 660));
+            stage.setMinWidth(640);
+            stage.setMinHeight(560);
             stage.setResizable(true);
 
             ResourceFormController controller = loader.getController();
@@ -465,7 +465,10 @@ public class ResourceListController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/fxml/resource_detail.fxml"));
             Stage stage = new Stage();
             stage.setTitle("Detail: " + resource.getTitle());
-            stage.setScene(new Scene(loader.load(), 1000, 860));
+            stage.setScene(new Scene(loader.load(), 880, 700));
+            stage.setMinWidth(760);
+            stage.setMinHeight(560);
+            stage.setResizable(true);
 
             ResourceDetailController controller = loader.getController();
             controller.setResource(resource);

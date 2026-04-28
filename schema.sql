@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS commentaire (
     rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     approved BOOLEAN DEFAULT FALSE,
+    like_count INT DEFAULT 0,
+    dislike_count INT DEFAULT 0,
     FOREIGN KEY (id_resource) REFERENCES resource(id) ON DELETE CASCADE,
     INDEX idx_resource (id_resource),
     INDEX idx_approved (approved),

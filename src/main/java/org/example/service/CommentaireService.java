@@ -1,11 +1,11 @@
 package org.example.service;
 
-import org.example.dao.CommentaireDAO;
-import org.example.model.Commentaire;
-
 import java.sql.SQLException;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import org.example.dao.CommentaireDAO;
+import org.example.model.Commentaire;
 
 public class CommentaireService {
     private CommentaireDAO commentaireDAO = new CommentaireDAO();
@@ -71,5 +71,21 @@ public class CommentaireService {
     
     public List<Commentaire> getUnapprovedCommentaires() throws SQLException {
         return commentaireDAO.findUnapproved();
+    }
+    
+    public void addLike(int commentId) throws SQLException {
+        commentaireDAO.addLike(commentId);
+    }
+    
+    public void removeLike(int commentId) throws SQLException {
+        commentaireDAO.removeLike(commentId);
+    }
+    
+    public void addDislike(int commentId) throws SQLException {
+        commentaireDAO.addDislike(commentId);
+    }
+    
+    public void removeDislike(int commentId) throws SQLException {
+        commentaireDAO.removeDislike(commentId);
     }
 }

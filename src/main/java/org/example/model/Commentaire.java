@@ -12,6 +12,8 @@ public class Commentaire {
     private int rating;         // 1-5
     private LocalDateTime createdAt;
     private boolean approved;
+    private int likeCount;      // nombre de likes
+    private int dislikeCount;   // nombre de dislikes
     
     // Constructeurs
     public Commentaire() {
@@ -40,6 +42,23 @@ public class Commentaire {
         this.rating = rating;
         this.createdAt = createdAt;
         this.approved = approved;
+        this.likeCount = 0;
+        this.dislikeCount = 0;
+    }
+
+    public Commentaire(int id, int resourceId, int userId, String authorName, String authorEmail,
+                       String content, int rating, LocalDateTime createdAt, boolean approved, int likeCount, int dislikeCount) {
+        this.id = id;
+        this.resourceId = resourceId;
+        this.userId = userId;
+        this.authorName = authorName;
+        this.authorEmail = authorEmail;
+        this.content = content;
+        this.rating = rating;
+        this.createdAt = createdAt;
+        this.approved = approved;
+        this.likeCount = likeCount;
+        this.dislikeCount = dislikeCount;
     }
     
     // Getters & Setters
@@ -113,6 +132,22 @@ public class Commentaire {
     
     public void setApproved(boolean approved) {
         this.approved = approved;
+    }
+    
+    public int getLikeCount() {
+        return likeCount;
+    }
+    
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+    
+    public int getDislikeCount() {
+        return dislikeCount;
+    }
+    
+    public void setDislikeCount(int dislikeCount) {
+        this.dislikeCount = dislikeCount;
     }
     
     @Override

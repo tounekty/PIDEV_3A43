@@ -2,15 +2,18 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.example.controller.ResourceCatalogController"
+            styleClass="admin-root"
+            stylesheets="@../css/admin-theme.css"
             style="-fx-background-color: linear-gradient(to bottom right,#ffffff,#edf6ff); -fx-font-family: Arial;">
     <top>
         <VBox spacing="10" BorderPane.alignment="CENTER">
@@ -29,6 +32,10 @@
     </top>
 
     <center>
-        <ListView fx:id="resourceListView" style="-fx-background-color: transparent; -fx-control-inner-background: transparent; -fx-padding: 14;"/>
+        <ScrollPane fx:id="gridScrollPane" styleClass="grid-scroll-pane" style="-fx-background-color: transparent; -fx-control-inner-background: transparent; -fx-padding: 14;">
+            <content>
+                <GridPane fx:id="resourceGridPane" styleClass="grid-container" style="-fx-background-color: transparent; -fx-hgap: 16; -fx-vgap: 16; -fx-padding: 14;"/>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

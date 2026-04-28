@@ -88,25 +88,29 @@ public class CommentaireFormController {
     @FXML
     private void handleSave() {
         try {
+            String authorName = fieldText(authorNameField);
+            String authorEmail = fieldText(authorEmailField);
+            String content = fieldText(contentArea);
+
             // Validation basique
-            if (authorNameField.getText().isEmpty()) {
+            if (authorName.isEmpty()) {
                 showWarning("Le nom est obligatoire");
                 return;
             }
-            if (authorEmailField.getText().isEmpty()) {
+            if (authorEmail.isEmpty()) {
                 showWarning("L'email est obligatoire");
                 return;
             }
-            if (contentArea.getText().isEmpty()) {
+            if (content.isEmpty()) {
                 showWarning("Le commentaire est obligatoire");
                 return;
             }
             
             Commentaire commentaire = new Commentaire(
                 resource.getId(),
-                authorNameField.getText(),
-                authorEmailField.getText(),
-                contentArea.getText(),
+                authorName,
+                authorEmail,
+                content,
                 selectedRating,
                 currentUserId
             );
@@ -149,5 +153,12 @@ public class CommentaireFormController {
         alert.setTitle("Attention");
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private String fieldText(TextInputControl field) {
+        if (field == null || field.getText() == null) {
+            return "";
+        }
+        return field.getText().trim();
     }
 }
