@@ -19,6 +19,13 @@ public class EmailService {
     private final String password;
     private final String from;
     private final boolean authEnabled;
+    private final boolean startTlsEnabled;
+    private final boolean startTlsRequired;
+    private final boolean sslEnabled;
+    private final String sslTrust;
+    private final String connectionTimeoutMs;
+    private final String readTimeoutMs;
+    private final String writeTimeoutMs;
 
     public EmailService() {
         this.host = firstConfigured("SMTP_HOST", "mail.smtp.host");
@@ -31,6 +38,13 @@ public class EmailService {
         this.password = firstConfigured("SMTP_PASSWORD", "mail.smtp.password");
         this.from = firstConfigured("SMTP_FROM", "mail.smtp.from", username);
         this.authEnabled = Boolean.parseBoolean(firstConfigured("SMTP_AUTH", "mail.smtp.auth", username != null && !username.isBlank() ? "true" : "false"));
+        this.startTlsEnabled = Boolean.parseBoolean(firstConfigured("SMTP_STARTTLS", "mail.smtp.starttls.enable", "true"));
+        this.startTlsRequired = Boolean.parseBoolean(firstConfigured("SMTP_STARTTLS_REQUIRED", "mail.smtp.starttls.required", "false"));
+        this.sslEnabled = Boolean.parseBoolean(firstConfigured("SMTP_SSL_ENABLE", "mail.smtp.ssl.enable", "465".equals(port) ? "true" : "false"));
+        this.sslTrust = firstConfigured("SMTP_SSL_TRUST", "mail.smtp.ssl.trust", host);
+        this.connectionTimeoutMs = firstConfigured("SMTP_CONNECTION_TIMEOUT", "mail.smtp.connectiontimeout", "10000");
+        this.readTimeoutMs = firstConfigured("SMTP_READ_TIMEOUT", "mail.smtp.timeout", "10000");
+        this.writeTimeoutMs = firstConfigured("SMTP_WRITE_TIMEOUT", "mail.smtp.writetimeout", "10000");
     }
 
     public boolean isConfigured() {
@@ -44,12 +58,22 @@ public class EmailService {
         if (recipientEmail == null || recipientEmail.isBlank()) {
             throw new MessagingException("Recipient email is empty.");
         }
+        if (authEnabled && (username == null || username.isBlank() || password == null || password.isBlank())) {
+            throw new MessagingException("SMTP auth is enabled but SMTP_USERNAME/SMTP_USER or SMTP_PASSWORD is missing.");
+        }
 
         Properties properties = new Properties();
         properties.put("mail.smtp.host", host);
         properties.put("mail.smtp.port", port);
         properties.put("mail.smtp.auth", String.valueOf(authEnabled));
-        properties.put("mail.smtp.starttls.enable", firstConfigured("SMTP_STARTTLS", "mail.smtp.starttls.enable", "true"));
+        properties.put("mail.smtp.starttls.enable", String.valueOf(startTlsEnabled));
+        properties.put("mail.smtp.starttls.required", String.valueOf(startTlsRequired));
+        properties.put("mail.smtp.ssl.enable", String.valueOf(sslEnabled));
+        properties.put("mail.smtp.ssl.trust", sslTrust);
+        properties.put("mail.smtp.connectiontimeout", connectionTimeoutMs);
+        properties.put("mail.smtp.timeout", readTimeoutMs);
+        properties.put("mail.smtp.writetimeout", writeTimeoutMs);
+        properties.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
 
         Session session = authEnabled
                 ? Session.getInstance(properties, new Authenticator() {
