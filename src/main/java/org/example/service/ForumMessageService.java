@@ -4,6 +4,7 @@ import org.example.model.ForumMessage;
 import org.example.repository.ForumMessageRepository;
 import org.example.repository.impl.ForumMessageRepositoryImpl;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.Set;
 public class ForumMessageService {
     public static final int MAX_THREAD_LEVEL = 3;
     private final ForumMessageRepository forumMessageRepository;
+    private final ToxicityDetectionService toxicityDetectionService;
 
     public ForumMessageService() {
         this.forumMessageRepository = new ForumMessageRepositoryImpl();
+        this.toxicityDetectionService = new ToxicityDetectionService();
     }
 
     public void createTableIfNotExists() throws SQLException {
@@ -25,6 +28,7 @@ public class ForumMessageService {
         if (message == null || message.getContenu() == null || message.getContenu().isBlank()) {
             throw new SQLException("Message content is required.");
         }
+        checkToxicity(message.getContenu());
         Integer parentMessageId = message.getParentMessageId();
         if (parentMessageId != null) {
             if (parentMessageId <= 0) {
@@ -101,5 +105,17 @@ public class ForumMessageService {
             currentParentId = parent.getParentMessageId();
         }
         return level;
+    }
+
+    private void checkToxicity(String... texts) throws SQLException {
+        try {
+            Set<String> toxicWords = toxicityDetectionService.detectToxicWords(texts);
+            if (!toxicWords.isEmpty()) {
+                throw new SQLException("Votre contenu contient des termes toxiques " + toxicWords);
+            }
+        } catch (IOException e) {
+            System.err.println("Warning: Toxicity detection failed: " + e.getMessage());
+            // Do not block if detection service fails
+        }
     }
 }

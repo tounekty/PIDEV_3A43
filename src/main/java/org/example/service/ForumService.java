@@ -4,6 +4,7 @@ import org.example.model.ForumSubject;
 import org.example.repository.ForumRepository;
 import org.example.repository.impl.ForumRepositoryImpl;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.text.Normalizer;
 import java.util.Arrays;
@@ -17,9 +18,11 @@ public class ForumService {
     private static final double DESCRIPTION_SIMILARITY_THRESHOLD = 0.82;
 
     private final ForumRepository forumRepository;
+    private final ToxicityDetectionService toxicityDetectionService;
 
     public ForumService() {
         this.forumRepository = new ForumRepositoryImpl();
+        this.toxicityDetectionService = new ToxicityDetectionService();
     }
     public List<ForumSubject> getAllSubjects() throws SQLException {
         return forumRepository.findAll();
@@ -32,6 +35,7 @@ public class ForumService {
         if (subject == null || subject.getTitre() == null || subject.getTitre().isBlank()) {
             throw new SQLException("Subject title is required.");
         }
+        checkToxicity(subject.getTitre(), subject.getDescription());
         ensureSubjectIsUnique(subject);
         forumRepository.save(subject);
     }
@@ -40,6 +44,7 @@ public class ForumService {
         if (subject == null || subject.getId() <= 0) {
             throw new SQLException("Valid subject ID is required.");
         }
+        checkToxicity(subject.getTitre(), subject.getDescription());
         ensureSubjectIsUnique(subject);
         forumRepository.update(subject);
     }
@@ -133,5 +138,17 @@ public class ForumService {
         Set<String> union = new HashSet<>(first);
         union.addAll(second);
         return (double) intersection.size() / union.size();
+    }
+
+    private void checkToxicity(String... texts) throws SQLException {
+        try {
+            Set<String> toxicWords = toxicityDetectionService.detectToxicWords(texts);
+            if (!toxicWords.isEmpty()) {
+                throw new SQLException("Votre contenu contient des termes non autorisés: " + toxicWords);
+            }
+        } catch (IOException e) {
+            System.err.println("Warning: Toxicity detection failed: " + e.getMessage());
+            // Do not block if detection service fails
+        }
     }
 }
