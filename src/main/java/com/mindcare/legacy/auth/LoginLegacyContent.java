@@ -8,8 +8,8 @@ import com.mindcare.model.User;
 import com.mindcare.service.MockDataService;
 import com.mindcare.utils.NavigationManager;
 import com.mindcare.utils.SessionManager;
-import com.mindcare.view.client.ClientDashboardView;
-import com.mindcare.view.admin.AdminDashboardView;
+import com.mindcare.view.client.ContractsView;
+import com.mindcare.view.admin.GestionUserView;
 import com.mindcare.view.psychologue.PsychologueDashboardView;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -201,10 +201,10 @@ public class LoginLegacyContent implements NavigationManager.Buildable {
     private void redirectToRole(User.Role role) {
         NavigationManager nav = NavigationManager.getInstance();
         switch (role) {
-            case CLIENT      -> nav.navigateContent("Dashboard",       () -> new ClientDashboardView().build());
+            case CLIENT      -> nav.navigateContent("Prenez un rendez-vous",       () -> new ContractsView().build());
             case PSYCHOLOGUE      -> nav.navigateContent("Dashboard",       () -> new PsychologueDashboardView().build());
-            case ADMIN       -> nav.navigateContent("Admin Dashboard", () -> new AdminDashboardView().build());
-            case SUPER_ADMIN -> nav.navigateContent("Admin Dashboard", () -> new AdminDashboardView().build());
+            case ADMIN       -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
+            case SUPER_ADMIN -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
         }
     }
 }

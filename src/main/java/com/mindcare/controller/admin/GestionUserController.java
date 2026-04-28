@@ -147,6 +147,9 @@ public class GestionUserController {
         }
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("User Details");
+        dialog.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
 
         Label title = new Label(user.getFullName());
@@ -219,6 +222,9 @@ public class GestionUserController {
     private void showDatabaseError(String message, Throwable exception) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Database Error");
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText("User operation failed");
         String detail = exception != null && exception.getCause() != null ? exception.getCause().getMessage() : "";
         alert.setContentText(detail.isBlank() ? message : message + "\n\nDetails: " + detail);
@@ -228,6 +234,9 @@ public class GestionUserController {
     private boolean confirmAction(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(title);
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText(null);
         alert.setContentText(message);
         Optional<ButtonType> result = alert.showAndWait();

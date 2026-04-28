@@ -30,7 +30,7 @@ public class BadgeLabel extends Label {
     public static BadgeLabel forStatus(String status) {
         return switch (status.toUpperCase()) {
             case "OPEN", "ACTIVE", "APPROVED"              -> new BadgeLabel(status, Style.SUCCESS);
-            case "PENDING", "IN_PROGRESS"                  -> new BadgeLabel(status, Style.WARNING);
+            case "PENDING", "IN_PROGRESS", "EN COURS"     -> new BadgeLabel(status, Style.WARNING);
             case "COMPLETED", "RESOLVED", "CLOSED"         -> new BadgeLabel(status, Style.PRIMARY);
             case "CANCELLED", "REJECTED", "WITHDRAWN"      -> new BadgeLabel(status, Style.DANGER);
             case "DISPUTED"                                -> new BadgeLabel(status, Style.DANGER);

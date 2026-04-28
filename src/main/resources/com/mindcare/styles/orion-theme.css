@@ -974,3 +974,297 @@
     -fx-border-color: #0D6EFD;
 }
 
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   DIALOGS & ALERTS - MINDCARE THEME
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Main Dialog Pane - applies to ALL dialogs and alerts */
+.dialog-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5E1F4;
+    -fx-border-width: 1;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 0;
+}
+
+/* Dialog Header (title area) */
+.dialog-pane .header-panel {
+    -fx-background-color: #F7FAFF;
+    -fx-border-color: transparent transparent #D5E1F4 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 20 20 16 20;
+    -fx-background-radius: 16 16 0 0;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1F2A44;
+}
+
+/* Dialog Content Area */
+.dialog-pane .content {
+    -fx-padding: 20;
+    -fx-background-color: #FFFFFF;
+}
+
+.dialog-pane .content .label {
+    -fx-text-fill: #5B6B84;
+    -fx-font-size: 13px;
+    -fx-line-spacing: 3;
+}
+
+/* Dialog Button Bar (footer) */
+.dialog-pane .button-bar {
+    -fx-background-color: #F7FAFF;
+    -fx-border-color: #D5E1F4 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 12 20 12 20;
+    -fx-background-radius: 0 0 16 16;
+    -fx-spacing: 8;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-padding: 8 16;
+    -fx-min-width: 80;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+/* Primary Button (OK, Accept, Confirm) */
+.dialog-pane .button-bar .button:default {
+    -fx-background-color: #0D6EFD;
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: transparent;
+}
+
+.dialog-pane .button-bar .button:default:hover {
+    -fx-background-color: #0B5ED7;
+}
+
+.dialog-pane .button-bar .button:default:pressed {
+    -fx-background-color: #0A58CA;
+}
+
+/* Secondary Button (Cancel, No, Close) */
+.dialog-pane .button-bar .button {
+    -fx-background-color: #F7FAFF;
+    -fx-text-fill: #5B6B84;
+    -fx-border-color: #D5E1F4;
+    -fx-border-width: 1;
+}
+
+.dialog-pane .button-bar .button:hover {
+    -fx-background-color: #ECF3FF;
+    -fx-border-color: #A8B9D4;
+    -fx-text-fill: #1F2A44;
+}
+
+.dialog-pane .button-bar .button:pressed {
+    -fx-background-color: #E3EDFF;
+}
+
+.dialog-pane .button-bar .button:focused {
+    -fx-border-color: #0D6EFD;
+    -fx-border-width: 2;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   ALERT DIALOGS - SPECIFIC TYPES
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Alert Icon */
+.alert .alert-icon {
+    -fx-font-size: 32px;
+    -fx-alignment: center;
+    -fx-min-width: 48;
+    -fx-min-height: 48;
+}
+
+/* Information Alert */
+.alert-info .alert-icon {
+    -fx-text-fill: #3B82F6;
+}
+
+.alert-info .header-panel {
+    -fx-background-color: rgba(59, 130, 246, 0.1);
+}
+
+.alert-info .header-panel .label {
+    -fx-text-fill: #1E40AF;
+}
+
+/* Warning Alert */
+.alert-warning .alert-icon {
+    -fx-text-fill: #F59E0B;
+}
+
+.alert-warning .header-panel {
+    -fx-background-color: rgba(245, 158, 11, 0.1);
+}
+
+.alert-warning .header-panel .label {
+    -fx-text-fill: #92400E;
+}
+
+/* Error Alert */
+.alert-error .alert-icon {
+    -fx-text-fill: #EF4444;
+}
+
+.alert-error .header-panel {
+    -fx-background-color: rgba(239, 68, 68, 0.1);
+}
+
+.alert-error .header-panel .label {
+    -fx-text-fill: #7F1D1D;
+}
+
+/* Confirmation Alert */
+.alert-confirmation .alert-icon {
+    -fx-text-fill: #10B981;
+}
+
+.alert-confirmation .header-panel {
+    -fx-background-color: rgba(16, 185, 129, 0.1);
+}
+
+.alert-confirmation .header-panel .label {
+    -fx-text-fill: #065F46;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   CUSTOM DIALOG UTILITIES
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Dialog with larger content area */
+.dialog-large {
+    -fx-pref-width: 600;
+    -fx-pref-height: 500;
+}
+
+.dialog-medium {
+    -fx-pref-width: 480;
+    -fx-pref-height: 320;
+}
+
+.dialog-small {
+    -fx-pref-width: 380;
+    -fx-pref-height: 220;
+}
+
+/* Text input in dialogs */
+.dialog-pane .text-field,
+.dialog-pane .text-area,
+.dialog-pane .password-field {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5E1F4;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #1F2A44;
+    -fx-prompt-text-fill: #7A8CA8;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane .text-field:focused,
+.dialog-pane .text-area:focused,
+.dialog-pane .password-field:focused {
+    -fx-border-color: #0D6EFD;
+    -fx-border-width: 2;
+}
+
+/* ComboBox in dialogs */
+.dialog-pane .combo-box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D5E1F4;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6 12;
+}
+
+.dialog-pane .combo-box:focused {
+    -fx-border-color: #0D6EFD;
+}
+
+.dialog-pane .combo-box-popup .list-view {
+    -fx-background-color: #F7FAFF;
+    -fx-border-color: #D5E1F4;
+    -fx-border-radius: 8;
+}
+
+.dialog-pane .combo-box-popup .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #1F2A44;
+    -fx-padding: 8 12;
+}
+
+.dialog-pane .combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: rgba(13, 110, 253, 0.12);
+}
+
+.dialog-pane .combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: rgba(13, 110, 253, 0.3);
+}
+
+/* Checkbox in dialogs */
+.dialog-pane .check-box {
+    -fx-text-fill: #5B6B84;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane .check-box:focused {
+    -fx-text-fill: #1F2A44;
+}
+
+.dialog-pane .check-box .box {
+    -fx-border-color: #D5E1F4;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+}
+
+.dialog-pane .check-box:selected .box {
+    -fx-background-color: #0D6EFD;
+    -fx-border-color: #0D6EFD;
+}
+
+.dialog-pane .check-box .mark {
+    -fx-text-fill: #FFFFFF;
+}
+
+/* Styled form group in dialog */
+.dialog-form-group {
+    -fx-spacing: 6;
+}
+
+.dialog-form-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #5B6B84;
+}
+
+.dialog-form-hint {
+    -fx-font-size: 11px;
+    -fx-text-fill: #7A8CA8;
+    -fx-font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   STAGE (Window Frame) - Global styling for all popup windows
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Overall stage/window styling */
+.stage {
+    -fx-background-color: #FFFFFF;
+}
+
+/* Useful for shadowed dialogs - can be applied to DialogPane */
+.dialog-shadow {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0, 0, 8);
+}
+

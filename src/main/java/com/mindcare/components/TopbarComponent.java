@@ -3,12 +3,12 @@ package com.mindcare.components;
 import com.mindcare.utils.SessionManager;
 import com.mindcare.model.User;
 import com.mindcare.utils.NavigationManager;
-import com.mindcare.view.admin.GestionForumSujetsView;
+import com.mindcare.view.admin.GestionUserView;
 import com.mindcare.view.auth.LoginView;
 import com.mindcare.view.client.ClientProfileView;
-import com.mindcare.view.client.TicketsView;
+import com.mindcare.view.client.MessagingView;
 import com.mindcare.view.psychologue.PsychologueProfileView;
-import com.mindcare.view.psychologue.PsychologueTicketsView;
+import com.mindcare.view.psychologue.PsychologueMessagingView;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
@@ -165,9 +165,9 @@ public class TopbarComponent extends HBox {
             return;
         }
         switch (user.getRole()) {
-            case CLIENT -> nav.navigateContent("Gestion Forum - Sujets", () -> new TicketsView().build());
-            case PSYCHOLOGUE -> nav.navigateContent("Gestion Forum - Sujets", () -> new PsychologueTicketsView().build());
-            case ADMIN, SUPER_ADMIN -> nav.navigateContent("Gestion Forum - Sujets", () -> new GestionForumSujetsView().build());
+            case CLIENT -> nav.navigateContent("Messages", () -> new MessagingView().build());
+            case PSYCHOLOGUE -> nav.navigateContent("Messages", () -> new PsychologueMessagingView().build());
+            case ADMIN, SUPER_ADMIN -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
         }
     }
 

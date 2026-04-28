@@ -1,6 +1,8 @@
 package com.mindcare.utils;
 
 import com.mindcare.model.User;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * SessionManager – singleton holding the currently authenticated user.
@@ -8,6 +10,7 @@ import com.mindcare.model.User;
  */
 public class SessionManager {
 
+    private static final Logger logger = Logger.getLogger(SessionManager.class.getName());
     private static SessionManager instance;
     private User currentUser;
 
@@ -24,6 +27,9 @@ public class SessionManager {
         this.currentUser = user;
     }
 
+    /**
+     * Logout: clears session
+     */
     public void logout() {
         this.currentUser = null;
     }

@@ -5,13 +5,16 @@ import com.mindcare.model.Appointment;
 import com.mindcare.model.PatientFile;
 import com.mindcare.model.User;
 import com.mindcare.services.AppointmentService;
+import com.mindcare.services.OllamaAiService;
 import com.mindcare.utils.NavigationManager;
 import com.mindcare.utils.SessionManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.event.ActionEvent;
@@ -51,9 +54,11 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
     }
 
     private final AppointmentService appointmentService = new AppointmentService();
+    private final OllamaAiService ollamaAiService = new OllamaAiService();
     private final VBox content = new VBox(16);
     private User selectedPsychologue;
     private Mode mode = Mode.BOOK;
+    private Task<String> currentAiTask;
 
     @Override
     public Node build() {
@@ -226,8 +231,12 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
         DatePicker datePicker = new DatePicker(LocalDate.now());
 
         ComboBox<String> timeBox = new ComboBox<>();
-        refreshAvailableSlots(timeBox, psychologue, datePicker.getValue());
-        datePicker.valueProperty().addListener((obs, oldDate, newDate) -> refreshAvailableSlots(timeBox, psychologue, newDate));
+        Label slotInfoLabel = new Label();
+        slotInfoLabel.getStyleClass().add("label-muted");
+        refreshAvailableSlots(timeBox, psychologue, datePicker.getValue(), null, slotInfoLabel);
+        datePicker.valueProperty().addListener((obs, oldDate, newDate) ->
+            refreshAvailableSlots(timeBox, psychologue, newDate, null, slotInfoLabel)
+        );
 
         ComboBox<String> locationBox = new ComboBox<>();
         locationBox.getItems().addAll("online", "in office");
@@ -274,8 +283,20 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
                 return;
             }
 
+            LocalDateTime selectedDateTime = LocalDateTime.of(datePicker.getValue(), LocalTime.parse(timeBox.getValue()));
+            if (appointmentService.hasStudentAppointmentWithPsychologistInSameWeek(
+                currentStudent.getId(),
+                psychologue.getId(),
+                selectedDateTime,
+                null
+            )) {
+                errorLabel.setText("Un seul rendez-vous par semaine par psychologue et par étudiant.");
+                errorLabel.setVisible(true);
+                return;
+            }
+
             Appointment appointment = new Appointment();
-            appointment.setDateTime(LocalDateTime.of(datePicker.getValue(), LocalTime.parse(timeBox.getValue())));
+            appointment.setDateTime(selectedDateTime);
             appointment.setLocation(locationBox.getValue());
             appointment.setDescription(cleanDescription(descriptionArea.getText()));
             appointment.setStatus("pending");
@@ -287,7 +308,7 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
                 successLabel.setText("Votre demande de rendez-vous a été envoyée avec succès.");
                 successLabel.setVisible(true);
                 datePicker.setValue(LocalDate.now());
-                refreshAvailableSlots(timeBox, psychologue, datePicker.getValue());
+                refreshAvailableSlots(timeBox, psychologue, datePicker.getValue(), null, slotInfoLabel);
                 locationBox.setValue("in office");
                 descriptionArea.clear();
             } catch (Exception exception) {
@@ -296,16 +317,107 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
             }
         });
 
-        HBox buttons = new HBox(8, backBtn, createBtn);
+        Label aiStatus = new Label();
+        aiStatus.getStyleClass().add("label-muted");
+        aiStatus.setWrapText(true);
+
+        TextArea aiSuggestionArea = new TextArea();
+        aiSuggestionArea.setEditable(false);
+        aiSuggestionArea.setWrapText(true);
+        aiSuggestionArea.setPromptText("La suggestion IA s'affichera ici...");
+        aiSuggestionArea.setPrefRowCount(6);
+        aiSuggestionArea.setVisible(false);
+
+        Label aiSectionLabel = new Label("Meilleur créneau recommandé");
+        aiSectionLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13;");
+        aiSectionLabel.setVisible(false);
+
+        Button aiSuggestionBtn = new Button("Suggestion IA");
+        aiSuggestionBtn.getStyleClass().addAll("btn", "btn-secondary", "btn-sm");
+        Button cancelAiBtn = new Button("Annuler IA");
+        cancelAiBtn.getStyleClass().addAll("btn", "btn-outline", "btn-sm");
+        cancelAiBtn.setDisable(true);
+
+        aiSuggestionBtn.setOnAction(e -> {
+            errorLabel.setVisible(false);
+            successLabel.setVisible(false);
+
+            if (currentAiTask != null && currentAiTask.isRunning()) {
+                errorLabel.setText("Une génération IA est déjà en cours.");
+                errorLabel.setVisible(true);
+                return;
+            }
+
+            try {
+                aiStatus.setText("Génération IA en cours...");
+                aiSuggestionBtn.setDisable(true);
+                aiSuggestionBtn.setText("Chargement...");
+                cancelAiBtn.setDisable(false);
+                aiSectionLabel.setVisible(true);
+                aiSuggestionArea.setVisible(true);
+
+                currentAiTask = new Task<>() {
+                    @Override
+                    protected String call() {
+                        String statsSummary = appointmentService.buildPsychologistAcceptanceStatsSummary(psychologue.getId());
+                        return ollamaAiService.suggestBestTimesForStudentBooking(fullName(psychologue), statsSummary);
+                    }
+                };
+
+                currentAiTask.setOnSucceeded(evt -> {
+                    aiSuggestionArea.setText(currentAiTask.getValue());
+                    aiStatus.setText("Suggestion générée.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA");
+                    cancelAiBtn.setDisable(true);
+                });
+                currentAiTask.setOnCancelled(evt -> {
+                    aiStatus.setText("Suggestion IA annulée.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA");
+                    cancelAiBtn.setDisable(true);
+                });
+                currentAiTask.setOnFailed(evt -> {
+                    Throwable ex = currentAiTask.getException();
+                    errorLabel.setText(ex == null ? "Erreur IA inconnue." : rootMessage(ex));
+                    errorLabel.setVisible(true);
+                    aiStatus.setText("Échec de la génération IA.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA");
+                    cancelAiBtn.setDisable(true);
+                });
+
+                Thread aiThread = new Thread(currentAiTask, "mindcare-ollama-booking");
+                aiThread.setDaemon(true);
+                aiThread.start();
+            } catch (Exception exception) {
+                errorLabel.setText(rootMessage(exception));
+                errorLabel.setVisible(true);
+                aiSectionLabel.setVisible(false);
+                aiSuggestionArea.setVisible(false);
+            }
+        });
+
+        cancelAiBtn.setOnAction(e -> {
+            if (currentAiTask != null && currentAiTask.isRunning()) {
+                currentAiTask.cancel();
+            }
+        });
+
+        HBox buttons = new HBox(8, backBtn, aiSuggestionBtn, cancelAiBtn, createBtn);
         VBox card = new VBox(
             10,
             field("Date", datePicker),
             field("Heure", timeBox),
+            slotInfoLabel,
             field("Lieu", locationBox),
             field("Description", descriptionArea),
             errorLabel,
             successLabel,
-            buttons
+            buttons,
+            aiSectionLabel,
+            aiStatus,
+            aiSuggestionArea
         );
         card.setPadding(new Insets(14));
         card.getStyleClass().add("card");
@@ -350,124 +462,11 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
         HBox filters = new HBox(10, searchField, sortBox);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        TableView<Appointment> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setFixedCellSize(56);
-        table.setPrefHeight(460);
-
-        TableColumn<Appointment, String> dateCol = new TableColumn<>("Date/Heure");
-        dateCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getDateTimeDisplay()));
-
-        TableColumn<Appointment, String> psychologueCol = new TableColumn<>("Psychologue");
-        psychologueCol.setCellValueFactory(cd -> new SimpleStringProperty(emptySafe(cd.getValue().getPsyName())));
-
-        TableColumn<Appointment, String> locationCol = new TableColumn<>("Lieu");
-        locationCol.setCellValueFactory(cd -> new SimpleStringProperty(emptySafe(cd.getValue().getLocation())));
-
-        TableColumn<Appointment, String> descriptionCol = new TableColumn<>("Description");
-        descriptionCol.setCellValueFactory(cd -> new SimpleStringProperty(emptySafe(cd.getValue().getDescription())));
-
-        TableColumn<Appointment, Void> statusCol = new TableColumn<>("Statut");
-        statusCol.setCellFactory(c -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getTableRow().getItem() == null) {
-                    setGraphic(null);
-                    return;
-                }
-                setGraphic(BadgeLabel.forStatus(emptySafe(getTableRow().getItem().getStatus()).toUpperCase()));
-            }
-        });
-
-        TableColumn<Appointment, Void> actionCol = new TableColumn<>("Actions");
-        actionCol.setMinWidth(290);
-        actionCol.setPrefWidth(290);
-        actionCol.setCellFactory(c -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                Appointment appointment = empty ? null : getTableRow().getItem();
-                if (appointment == null) {
-                    setGraphic(null);
-                    return;
-                }
-
-                String status = normalizeStatus(appointment.getStatus());
-
-                Button editBtn = new Button("Modifier");
-                editBtn.getStyleClass().addAll("btn", "btn-outline", "btn-sm");
-                editBtn.setMinWidth(84);
-                editBtn.setDisable(!("pending".equals(status) || "accepted".equals(status)));
-                editBtn.setOnAction(e -> openEditAppointmentDialog(appointment, studentId, data, messageLabel));
-
-                Button deleteBtn = new Button("Supprimer");
-                deleteBtn.getStyleClass().addAll("btn", "btn-danger", "btn-sm");
-                deleteBtn.setMinWidth(92);
-                deleteBtn.setDisable(!"pending".equals(status));
-                deleteBtn.setOnAction(e -> {
-                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                    confirm.setTitle("Confirmer la suppression");
-                    confirm.setHeaderText("Supprimer ce rendez-vous en attente ?");
-                    confirm.setContentText("Cette action est irreversible.");
-
-                    ButtonType yes = new ButtonType("Oui", ButtonBar.ButtonData.OK_DONE);
-                    ButtonType no = new ButtonType("Non", ButtonBar.ButtonData.CANCEL_CLOSE);
-                    confirm.getButtonTypes().setAll(yes, no);
-
-                    if (confirm.showAndWait().orElse(no) != yes) {
-                        return;
-                    }
-
-                    try {
-                        appointmentService.deletePendingByStudent(appointment.getId(), studentId);
-                        reloadStudentAppointments(data, studentId);
-                        messageLabel.setText("Rendez-vous supprime avec succes.");
-                        messageLabel.setStyle("-fx-text-fill: #16A34A; -fx-font-size: 12px;");
-                        messageLabel.setVisible(true);
-                    } catch (Exception exception) {
-                        messageLabel.setText(rootMessage(exception));
-                        messageLabel.getStyleClass().setAll("text-danger");
-                        messageLabel.setVisible(true);
-                    }
-                });
-
-                Button cancelBtn = new Button("Annuler");
-                cancelBtn.getStyleClass().addAll("btn", "btn-outline", "btn-sm");
-                cancelBtn.setMinWidth(84);
-                cancelBtn.setDisable(!"accepted".equals(status));
-                cancelBtn.setOnAction(e -> {
-                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                    confirm.setTitle("Confirmer l'annulation");
-                    confirm.setHeaderText("Annuler ce rendez-vous accepte ?");
-                    confirm.setContentText("Le statut passera a cancelled.");
-
-                    ButtonType yes = new ButtonType("Oui", ButtonBar.ButtonData.OK_DONE);
-                    ButtonType no = new ButtonType("Non", ButtonBar.ButtonData.CANCEL_CLOSE);
-                    confirm.getButtonTypes().setAll(yes, no);
-
-                    if (confirm.showAndWait().orElse(no) != yes) {
-                        return;
-                    }
-
-                    try {
-                        appointmentService.cancelAcceptedByStudent(appointment.getId(), studentId);
-                        reloadStudentAppointments(data, studentId);
-                        messageLabel.setText("Rendez-vous annule avec succes.");
-                        messageLabel.setStyle("-fx-text-fill: #16A34A; -fx-font-size: 12px;");
-                        messageLabel.setVisible(true);
-                    } catch (Exception exception) {
-                        messageLabel.setText(rootMessage(exception));
-                        messageLabel.getStyleClass().setAll("text-danger");
-                        messageLabel.setVisible(true);
-                    }
-                });
-
-                HBox actions = new HBox(6, editBtn, deleteBtn, cancelBtn);
-                actions.setAlignment(Pos.CENTER_LEFT);
-                setGraphic(actions);
-            }
-        });
+        VBox cardsContainer = new VBox(10);
+        ScrollPane cardsScroll = new ScrollPane(cardsContainer);
+        cardsScroll.setFitToWidth(true);
+        cardsScroll.setPrefHeight(460);
+        cardsScroll.getStyleClass().add("scroll-pane");
 
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
             String query = newValue == null ? "" : newValue.trim().toLowerCase();
@@ -484,15 +483,116 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
         );
         sorted.setComparator((a, b) -> compareAppointments(a, b, sortBox.getValue()));
 
-        table.getColumns().addAll(dateCol, psychologueCol, locationCol, descriptionCol, statusCol, actionCol);
-        table.setItems(sorted);
+        Runnable refreshCards = () -> {
+            cardsContainer.getChildren().clear();
+            for (Appointment appointment : sorted) {
+                cardsContainer.getChildren().add(buildStudentAppointmentCard(appointment, studentId, data, messageLabel));
+            }
+            if (cardsContainer.getChildren().isEmpty()) {
+                Label empty = new Label("Aucun rendez-vous trouve.");
+                empty.getStyleClass().add("label-muted");
+                cardsContainer.getChildren().add(empty);
+            }
+        };
 
-        VBox card = new VBox(10, filters, messageLabel, table);
+        sorted.addListener((ListChangeListener<Appointment>) change -> refreshCards.run());
+        refreshCards.run();
+
+        VBox card = new VBox(10, filters, messageLabel, cardsScroll);
         card.setPadding(new Insets(12));
         card.getStyleClass().add("card");
 
         wrapper.getChildren().addAll(title, card);
         return wrapper;
+    }
+
+    private VBox buildStudentAppointmentCard(Appointment appointment, int studentId, ObservableList<Appointment> data, Label messageLabel) {
+        Label dateLabel = new Label("Date/Heure: " + emptySafe(appointment.getDateTimeDisplay()));
+        Label psyLabel = new Label("Psychologue: " + emptySafe(appointment.getPsyName()));
+        Label locationLabel = new Label("Lieu: " + emptySafe(appointment.getLocation()));
+        Label descriptionLabel = new Label("Description: " + emptySafe(appointment.getDescription()));
+
+        BadgeLabel statusBadge = BadgeLabel.forStatus(emptySafe(appointment.getStatus()).toUpperCase());
+        HBox statusRow = new HBox(8, new Label("Statut:"), statusBadge);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+
+        String status = normalizeStatus(appointment.getStatus());
+
+        Button editBtn = new Button("Modifier");
+        editBtn.getStyleClass().addAll("btn", "btn-outline", "btn-sm");
+        editBtn.setDisable(!("pending".equals(status) || "accepted".equals(status)));
+        editBtn.setOnAction(e -> openEditAppointmentDialog(appointment, studentId, data, messageLabel));
+
+        Button deleteBtn = new Button("Supprimer");
+        deleteBtn.getStyleClass().addAll("btn", "btn-danger", "btn-sm");
+        deleteBtn.setDisable(!"pending".equals(status));
+        deleteBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirmer la suppression");
+            confirm.setHeaderText("Supprimer ce rendez-vous en attente ?");
+            confirm.setContentText("Cette action est irreversible.");
+
+            ButtonType yes = new ButtonType("Oui", ButtonBar.ButtonData.OK_DONE);
+            ButtonType no = new ButtonType("Non", ButtonBar.ButtonData.CANCEL_CLOSE);
+            confirm.getButtonTypes().setAll(yes, no);
+
+            if (confirm.showAndWait().orElse(no) != yes) {
+                return;
+            }
+
+            try {
+                appointmentService.deletePendingByStudent(appointment.getId(), studentId);
+                reloadStudentAppointments(data, studentId);
+                messageLabel.setText("Rendez-vous supprime avec succes.");
+                messageLabel.setStyle("-fx-text-fill: #16A34A; -fx-font-size: 12px;");
+                messageLabel.setVisible(true);
+            } catch (Exception exception) {
+                messageLabel.setText(rootMessage(exception));
+                messageLabel.getStyleClass().setAll("text-danger");
+                messageLabel.setVisible(true);
+            }
+        });
+
+        Button cancelBtn = new Button("Annuler");
+        cancelBtn.getStyleClass().addAll("btn", "btn-outline", "btn-sm");
+        cancelBtn.setDisable(!"accepted".equals(status));
+        cancelBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Confirmer l'annulation");
+            confirm.getDialogPane().getStylesheets().add(
+                getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+            );
+            confirm.setHeaderText("Annuler ce rendez-vous accepte ?");
+            confirm.setContentText("Le statut passera a cancelled.");
+
+            ButtonType yes = new ButtonType("Oui", ButtonBar.ButtonData.OK_DONE);
+            ButtonType no = new ButtonType("Non", ButtonBar.ButtonData.CANCEL_CLOSE);
+            confirm.getButtonTypes().setAll(yes, no);
+
+            if (confirm.showAndWait().orElse(no) != yes) {
+                return;
+            }
+
+            try {
+                appointmentService.cancelAcceptedByStudent(appointment.getId(), studentId);
+                reloadStudentAppointments(data, studentId);
+                messageLabel.setText("Rendez-vous annule avec succes.");
+                messageLabel.setStyle("-fx-text-fill: #16A34A; -fx-font-size: 12px;");
+                messageLabel.setVisible(true);
+            } catch (Exception exception) {
+                messageLabel.setText(rootMessage(exception));
+                messageLabel.getStyleClass().setAll("text-danger");
+                messageLabel.setVisible(true);
+            }
+        });
+
+        HBox actions = new HBox(8, editBtn, deleteBtn, cancelBtn);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        VBox card = new VBox(8, dateLabel, psyLabel, locationLabel, descriptionLabel, statusRow, actions);
+        card.getStyleClass().add("card");
+        card.setPadding(new Insets(12));
+        return card;
     }
 
     private void openEditAppointmentDialog(Appointment appointment, int studentId, ObservableList<Appointment> data, Label messageLabel) {
@@ -505,6 +605,9 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
 
         Alert dialog = new Alert(Alert.AlertType.NONE);
         dialog.setTitle("Modifier le rendez-vous");
+        dialog.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         dialog.setHeaderText("Modification autorisee (statut remis a pending)");
 
         ButtonType saveType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
@@ -516,12 +619,14 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
         DatePicker datePicker = new DatePicker(initialDate);
 
         ComboBox<String> timeBox = new ComboBox<>();
-        refreshAvailableSlots(timeBox, appointment.getPsyId(), initialDate, appointment.getId());
+        Label slotInfoLabel = new Label();
+        slotInfoLabel.getStyleClass().add("label-muted");
+        refreshAvailableSlots(timeBox, appointment.getPsyId(), initialDate, appointment.getId(), slotInfoLabel);
         if (timeBox.getItems().contains(initialTime)) {
             timeBox.setValue(initialTime);
         }
         datePicker.valueProperty().addListener((obs, oldDate, newDate) ->
-            refreshAvailableSlots(timeBox, appointment.getPsyId(), newDate, appointment.getId())
+            refreshAvailableSlots(timeBox, appointment.getPsyId(), newDate, appointment.getId(), slotInfoLabel)
         );
 
         ComboBox<String> locationBox = new ComboBox<>();
@@ -540,6 +645,7 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
             10,
             field("Date", datePicker),
             field("Heure", timeBox),
+            slotInfoLabel,
             field("Lieu", locationBox),
             field("Description", descriptionArea),
             errorLabel
@@ -590,6 +696,14 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
 
     private void reloadStudentAppointments(ObservableList<Appointment> data, int studentId) {
         data.setAll(appointmentService.findForStudent(studentId));
+    }
+
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message == null ? "" : message);
+        alert.showAndWait();
     }
 
     private VBox buildMyDossier() {
@@ -699,15 +813,37 @@ public class ContractsLegacyContent implements NavigationManager.Buildable {
         return slots;
     }
 
-    private void refreshAvailableSlots(ComboBox<String> timeBox, User psychologue, LocalDate selectedDate) {
+    private void refreshAvailableSlots(ComboBox<String> timeBox, User psychologue, LocalDate selectedDate, Integer excludedAppointmentId, Label slotInfoLabel) {
         Integer psyId = psychologue == null ? null : psychologue.getId();
-        refreshAvailableSlots(timeBox, psyId, selectedDate, null);
+        refreshAvailableSlots(timeBox, psyId, selectedDate, excludedAppointmentId, slotInfoLabel);
     }
 
-    private void refreshAvailableSlots(ComboBox<String> timeBox, Integer psyId, LocalDate selectedDate, Integer excludedAppointmentId) {
+    private void refreshAvailableSlots(ComboBox<String> timeBox, Integer psyId, LocalDate selectedDate, Integer excludedAppointmentId, Label slotInfoLabel) {
         timeBox.getItems().clear();
+        if (slotInfoLabel != null) {
+            slotInfoLabel.setText("");
+        }
         if (psyId == null || selectedDate == null) {
             return;
+        }
+
+        User currentStudent = SessionManager.getInstance().getCurrentUser();
+        int studentId = currentStudent == null ? -1 : currentStudent.getId();
+        if (studentId > 0) {
+            LocalDateTime weekProbe = LocalDateTime.of(selectedDate, LocalTime.NOON);
+            boolean alreadyBookedThisWeek = appointmentService.hasStudentAppointmentWithPsychologistInSameWeek(
+                studentId,
+                psyId,
+                weekProbe,
+                excludedAppointmentId
+            );
+            if (alreadyBookedThisWeek) {
+                if (slotInfoLabel != null) {
+                    slotInfoLabel.setText("Un seul rendez-vous par semaine par psychologue et par étudiant.");
+                }
+                timeBox.setPromptText("Un seul rendez-vous par semaine par psychologue et par étudiant.");
+                return;
+            }
         }
 
         List<String> allSlots = buildTimeSlots();

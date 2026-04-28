@@ -1,6 +1,7 @@
 package com.mindcare;
 
 import com.mindcare.db.DBConnection;
+import com.mindcare.services.AppointmentService;
 import com.mindcare.utils.NavigationManager;
 import com.mindcare.view.auth.LoginView;
 import javafx.application.Application;
@@ -8,6 +9,10 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * MindCare Desktop Application - Main Entry Point
@@ -18,6 +23,11 @@ public class MindcareApp extends Application {
     public static final String APP_TITLE = "MindCare";
     public static final double MIN_WIDTH  = 1200;
     public static final double MIN_HEIGHT = 750;
+    private final ScheduledExecutorService appointmentStatusScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "appointment-status-scheduler");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     @Override
     public void start(Stage primaryStage) {
@@ -44,6 +54,15 @@ public class MindcareApp extends Application {
 
         // Navigate to the login screen first
         nav.navigateTo(new LoginView());
+
+        // Keep appointment status in sync with real time while the app is running.
+        appointmentStatusScheduler.scheduleAtFixedRate(() -> {
+            try {
+                new AppointmentService().refreshTimeBasedStatuses();
+            } catch (Exception ignored) {
+                // Background sync should never crash the application thread.
+            }
+        }, 0, 1, TimeUnit.MINUTES);
     }
 
     public static void main(String[] args) {
@@ -52,6 +71,7 @@ public class MindcareApp extends Application {
 
     @Override
     public void stop() {
+        appointmentStatusScheduler.shutdownNow();
         DBConnection.shutdown();
     }
 }

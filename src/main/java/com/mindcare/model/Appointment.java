@@ -17,6 +17,8 @@ public class Appointment {
     private Integer psyId;
     private String psyName;
     private Integer patientFileId;
+    private String reportName;
+    private LocalDateTime reportUpdatedAt;
 
     public int getId() {
         return id;
@@ -96,6 +98,22 @@ public class Appointment {
 
     public void setPatientFileId(Integer patientFileId) {
         this.patientFileId = patientFileId;
+    }
+
+    public String getReportName() {
+        return reportName;
+    }
+
+    public void setReportName(String reportName) {
+        this.reportName = reportName;
+    }
+
+    public LocalDateTime getReportUpdatedAt() {
+        return reportUpdatedAt;
+    }
+
+    public void setReportUpdatedAt(LocalDateTime reportUpdatedAt) {
+        this.reportUpdatedAt = reportUpdatedAt;
     }
 
     public String getDateTimeDisplay() {

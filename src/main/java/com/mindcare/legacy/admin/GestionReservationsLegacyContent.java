@@ -9,6 +9,7 @@ import com.mindcare.utils.NavigationManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.event.ActionEvent;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
@@ -94,12 +95,6 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
     }
 
     private VBox buildTable() {
-        TableView<Appointment> table = new TableView<>();
-        table.getStyleClass().add("table-view");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setFixedCellSize(72);
-        table.setPrefHeight(480);
-
         TextField searchField = new TextField();
         searchField.setPromptText("Recherche: etudiant, psychologue, statut, lieu...");
 
@@ -116,74 +111,11 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
         HBox filtersRow = new HBox(10, searchField, sortBox);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        TableColumn<Appointment, String> dateCol = new TableColumn<>("Date/Heure");
-        dateCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getDateTimeDisplay()));
-
-        TableColumn<Appointment, String> locationCol = new TableColumn<>("Lieu");
-        locationCol.setCellValueFactory(cd -> new SimpleStringProperty(emptySafe(cd.getValue().getLocation())));
-
-        TableColumn<Appointment, String> studentCol = new TableColumn<>("Etudiant");
-        studentCol.setCellValueFactory(cd -> new SimpleStringProperty(displayUser(cd.getValue().getStudentName(), cd.getValue().getStudentId())));
-
-        TableColumn<Appointment, String> dossierCol = new TableColumn<>("Dossier Etudiant");
-        dossierCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getDossierReference()));
-
-        TableColumn<Appointment, String> psyCol = new TableColumn<>("Psychologue");
-        psyCol.setCellValueFactory(cd -> new SimpleStringProperty(displayUser(cd.getValue().getPsyName(), cd.getValue().getPsyId())));
-
-        TableColumn<Appointment, Void> statusCol = new TableColumn<>("Statut");
-        statusCol.setCellFactory(c -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getTableRow().getItem() == null) {
-                    setGraphic(null);
-                    return;
-                }
-                setGraphic(BadgeLabel.forStatus(emptySafe(getTableRow().getItem().getStatus()).toUpperCase()));
-            }
-        });
-
-        TableColumn<Appointment, Void> actionsCol = new TableColumn<>("Actions");
-        actionsCol.setMinWidth(230);
-        actionsCol.setPrefWidth(230);
-        actionsCol.setCellFactory(c -> new TableCell<>() {
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getTableRow().getItem() == null) {
-                    setGraphic(null);
-                    return;
-                }
-
-                Appointment current = getTableRow().getItem();
-
-                Button viewDossierBtn = new Button("Voir Dossier");
-                viewDossierBtn.getStyleClass().addAll("btn", "btn-info", "btn-sm");
-                viewDossierBtn.setMinWidth(102);
-                viewDossierBtn.setOnAction(e -> viewPatientFile(current));
-
-                Button detailsBtn = new Button("Détails");
-                detailsBtn.getStyleClass().addAll("btn", "btn-primary", "btn-sm");
-                detailsBtn.setMinWidth(78);
-                detailsBtn.setOnAction(e -> showAppointmentDetails(current));
-
-                Button editBtn = new Button("Modifier");
-                editBtn.getStyleClass().addAll("btn", "btn-secondary", "btn-sm");
-                editBtn.setMinWidth(84);
-                editBtn.setOnAction(e -> openEditor(current));
-
-                Button deleteBtn = new Button("Supprimer");
-                deleteBtn.getStyleClass().addAll("btn", "btn-danger", "btn-sm");
-                deleteBtn.setMinWidth(92);
-                deleteBtn.setOnAction(e -> deleteAppointment(current));
-
-                HBox topRow = new HBox(6, viewDossierBtn, detailsBtn);
-                HBox bottomRow = new HBox(6, editBtn, deleteBtn);
-                VBox actionBox = new VBox(4, topRow, bottomRow);
-                setGraphic(actionBox);
-            }
-        });
+        VBox cardsContainer = new VBox(10);
+        ScrollPane cardsScroll = new ScrollPane(cardsContainer);
+        cardsScroll.setFitToWidth(true);
+        cardsScroll.setPrefHeight(480);
+        cardsScroll.getStyleClass().add("scroll-pane");
 
         FilteredList<Appointment> filtered = new FilteredList<>(appointments, a -> true);
         SortedList<Appointment> sorted = new SortedList<>(filtered);
@@ -208,12 +140,60 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
             sorted.setComparator((a, b) -> compareByOption(a, b, newValue))
         );
 
-        table.getColumns().addAll(dateCol, locationCol, studentCol, dossierCol, psyCol, statusCol, actionsCol);
-        table.setItems(sorted);
+        Runnable refreshCards = () -> {
+            cardsContainer.getChildren().clear();
+            for (Appointment appointment : sorted) {
+                cardsContainer.getChildren().add(buildAdminAppointmentCard(appointment));
+            }
+            if (cardsContainer.getChildren().isEmpty()) {
+                Label empty = new Label("Aucun rendez-vous trouve.");
+                empty.getStyleClass().add("label-muted");
+                cardsContainer.getChildren().add(empty);
+            }
+        };
 
-        VBox card = new VBox(10, filtersRow, table);
+        sorted.addListener((ListChangeListener<Appointment>) change -> refreshCards.run());
+        refreshCards.run();
+
+        VBox card = new VBox(10, filtersRow, cardsScroll);
         card.getStyleClass().add("card");
         card.setPadding(new Insets(10));
+        return card;
+    }
+
+    private VBox buildAdminAppointmentCard(Appointment current) {
+        Label dateLabel = new Label("Date/Heure: " + emptySafe(current.getDateTimeDisplay()));
+        Label locationLabel = new Label("Lieu: " + emptySafe(current.getLocation()));
+        Label studentLabel = new Label("Etudiant: " + displayUser(current.getStudentName(), current.getStudentId()));
+        Label dossierLabel = new Label("Dossier Etudiant: " + current.getDossierReference());
+        Label psyLabel = new Label("Psychologue: " + displayUser(current.getPsyName(), current.getPsyId()));
+
+        BadgeLabel statusBadge = BadgeLabel.forStatus(emptySafe(current.getStatus()).toUpperCase());
+        HBox statusRow = new HBox(8, new Label("Statut:"), statusBadge);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+
+        Button viewDossierBtn = new Button("Voir Dossier");
+        viewDossierBtn.getStyleClass().addAll("btn", "btn-info", "btn-sm");
+        viewDossierBtn.setOnAction(e -> viewPatientFile(current));
+
+        Button detailsBtn = new Button("Détails");
+        detailsBtn.getStyleClass().addAll("btn", "btn-primary", "btn-sm");
+        detailsBtn.setOnAction(e -> showAppointmentDetails(current));
+
+        Button editBtn = new Button("Modifier");
+        editBtn.getStyleClass().addAll("btn", "btn-secondary", "btn-sm");
+        editBtn.setOnAction(e -> openEditor(current));
+
+        Button deleteBtn = new Button("Supprimer");
+        deleteBtn.getStyleClass().addAll("btn", "btn-danger", "btn-sm");
+        deleteBtn.setOnAction(e -> deleteAppointment(current));
+
+        HBox topActions = new HBox(6, viewDossierBtn, detailsBtn);
+        HBox bottomActions = new HBox(6, editBtn, deleteBtn);
+
+        VBox card = new VBox(8, dateLabel, locationLabel, studentLabel, dossierLabel, psyLabel, statusRow, topActions, bottomActions);
+        card.getStyleClass().add("card");
+        card.setPadding(new Insets(12));
         return card;
     }
 
@@ -235,6 +215,9 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
 
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Statistiques des rendez-vous");
+        dialog.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
         Label globalTitle = new Label("Global KPI cards");
@@ -527,6 +510,9 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
     private void openEditor(Appointment existing) {
         Dialog<Appointment> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Nouveau rendez-vous" : "Modifier rendez-vous");
+        dialog.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         // Load students and psychologists
@@ -719,6 +705,9 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
             "Supprimer le rendez-vous #" + appointment.getId() + " ?",
             ButtonType.YES, ButtonType.NO);
+        confirm.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         confirm.setHeaderText("Confirmation");
         Optional<ButtonType> answer = confirm.showAndWait();
         if (answer.isEmpty() || answer.get() != ButtonType.YES) {
@@ -892,6 +881,9 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
     private void showError(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText(title);
         alert.setContentText(message == null ? "Unexpected error" : message);
         alert.showAndWait();
@@ -913,6 +905,9 @@ public class GestionReservationsLegacyContent implements NavigationManager.Build
         try {
             Dialog<Void> dialog = new Dialog<>();
             dialog.setTitle("Détails du rendez-vous");
+            dialog.getDialogPane().getStylesheets().add(
+                getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+            );
             dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
             String dateTimeStr = appointment.getDateTime() != null

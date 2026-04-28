@@ -2,6 +2,8 @@ package com.mindcare.legacy.admin;
 
 import com.mindcare.model.PatientFile;
 import com.mindcare.services.AppointmentService;
+import com.mindcare.services.OllamaAiService;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -22,6 +24,8 @@ public class DossierMedicalLegacyContent implements com.mindcare.utils.Navigatio
     private static String currentStudentName;
     private static Integer currentStudentId;
     private final AppointmentService appointmentService = new AppointmentService();
+    private final OllamaAiService ollamaAiService = new OllamaAiService();
+    private Task<String> currentAiTask;
 
     public static void setPatientFile(PatientFile file, String studentName, Integer studentId) {
         currentPatientFile = file;
@@ -91,6 +95,21 @@ public class DossierMedicalLegacyContent implements com.mindcare.utils.Navigatio
         HBox actions = new HBox(10);
         Button saveBtn = new Button("Enregistrer");
         saveBtn.getStyleClass().addAll("btn", "btn-primary");
+        Button aiSuggestionBtn = new Button("Suggestion IA séance suivante");
+        aiSuggestionBtn.getStyleClass().addAll("btn", "btn-secondary");
+        Button cancelAiBtn = new Button("Annuler IA");
+        cancelAiBtn.getStyleClass().addAll("btn", "btn-outline");
+        cancelAiBtn.setDisable(true);
+
+        Label aiStatus = new Label();
+        aiStatus.getStyleClass().add("label-muted");
+        aiStatus.setWrapText(true);
+
+        TextArea aiSuggestionArea = new TextArea();
+        aiSuggestionArea.setEditable(false);
+        aiSuggestionArea.setWrapText(true);
+        aiSuggestionArea.setPromptText("La suggestion IA s'affichera ici...");
+        aiSuggestionArea.setPrefRowCount(8);
 
         Label inlineError = new Label();
         inlineError.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 12; -fx-font-weight: bold;");
@@ -127,10 +146,86 @@ public class DossierMedicalLegacyContent implements com.mindcare.utils.Navigatio
             }
         });
 
-        actions.getChildren().add(saveBtn);
+        aiSuggestionBtn.setOnAction(e -> {
+            try {
+                inlineError.setText("");
+                inlineSuccess.setText("");
+
+                if (currentAiTask != null && currentAiTask.isRunning()) {
+                    inlineError.setText("Une génération IA est déjà en cours.");
+                    return;
+                }
+
+                PatientFile aiInput = buildPatientFileForAi(
+                    traitementsField.getText(),
+                    allergiesField.getText(),
+                    contactNomField.getText(),
+                    contactTelField.getText(),
+                    antecedentsPersField.getText(),
+                    antecedentsFamField.getText(),
+                    motifField.getText(),
+                    objectifsField.getText(),
+                    notesField.getText(),
+                    risqueField.getText()
+                );
+
+                aiSuggestionBtn.setDisable(true);
+                aiSuggestionBtn.setText("Chargement...");
+                cancelAiBtn.setDisable(false);
+                aiStatus.setText("Génération IA en cours...");
+
+                currentAiTask = new Task<>() {
+                    @Override
+                    protected String call() {
+                        return ollamaAiService.suggestNextSessionFromPatientFile(currentStudentName, aiInput);
+                    }
+                };
+
+                currentAiTask.setOnSucceeded(evt -> {
+                    aiSuggestionArea.setText(currentAiTask.getValue());
+                    aiStatus.setText("Suggestion générée.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA séance suivante");
+                    cancelAiBtn.setDisable(true);
+                });
+                currentAiTask.setOnCancelled(evt -> {
+                    aiStatus.setText("Suggestion IA annulée.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA séance suivante");
+                    cancelAiBtn.setDisable(true);
+                });
+                currentAiTask.setOnFailed(evt -> {
+                    Throwable ex = currentAiTask.getException();
+                    inlineError.setText(ex == null ? "Erreur IA inconnue." : rootMessage(ex));
+                    aiStatus.setText("Échec de la génération IA.");
+                    aiSuggestionBtn.setDisable(false);
+                    aiSuggestionBtn.setText("Suggestion IA séance suivante");
+                    cancelAiBtn.setDisable(true);
+                });
+
+                Thread aiThread = new Thread(currentAiTask, "mindcare-ollama-suggestion");
+                aiThread.setDaemon(true);
+                aiThread.start();
+            } catch (IllegalArgumentException validationException) {
+                inlineError.setText(rootMessage(validationException));
+            } catch (Exception exception) {
+                inlineError.setText(rootMessage(exception));
+            }
+        });
+
+        cancelAiBtn.setOnAction(e -> {
+            if (currentAiTask != null && currentAiTask.isRunning()) {
+                currentAiTask.cancel();
+            }
+        });
+
+        actions.getChildren().addAll(aiSuggestionBtn, cancelAiBtn, saveBtn);
         content.getChildren().add(inlineError);
         content.getChildren().add(inlineSuccess);
         content.getChildren().add(actions);
+        content.getChildren().add(new Label("Suggestion IA (prochaine séance)"));
+        content.getChildren().add(aiStatus);
+        content.getChildren().add(aiSuggestionArea);
         return content;
     }
 
@@ -215,9 +310,47 @@ public class DossierMedicalLegacyContent implements com.mindcare.utils.Navigatio
     private void showError(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText(title);
         alert.setContentText(message == null ? "Unexpected error" : message);
         alert.showAndWait();
+    }
+
+    private PatientFile buildPatientFileForAi(
+        String traitements,
+        String allergies,
+        String contactNom,
+        String contactTel,
+        String antecedentsPers,
+        String antecedentsFam,
+        String motif,
+        String objectifs,
+        String notes,
+        String risque
+    ) {
+        PatientFile aiInput = new PatientFile();
+        aiInput.setStudentId(currentStudentId);
+        aiInput.setTraitementsEnCours(cleanSoft(traitements));
+        aiInput.setAllergies(cleanSoft(allergies));
+        aiInput.setContactUrgenceNom(cleanSoft(contactNom));
+        aiInput.setContactUrgenceTel(cleanSoft(contactTel));
+        aiInput.setAntecedentsPersonnels(cleanSoft(antecedentsPers));
+        aiInput.setAntecedentsFamiliaux(cleanSoft(antecedentsFam));
+        aiInput.setMotifConsultation(cleanSoft(motif));
+        aiInput.setObjectifsTherapeutiques(cleanSoft(objectifs));
+        aiInput.setNotesGenerales(cleanSoft(notes));
+        aiInput.setNiveauRisque(cleanSoft(risque));
+        return aiInput;
+    }
+
+    private String cleanSoft(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String rootMessage(Throwable throwable) {

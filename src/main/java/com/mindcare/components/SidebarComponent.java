@@ -3,7 +3,8 @@ package com.mindcare.components;
 import com.mindcare.model.User;
 import com.mindcare.utils.NavigationManager;
 import com.mindcare.utils.SessionManager;
-import com.mindcare.view.admin.AdminDashboardView;
+import com.mindcare.view.admin.GestionReservationsView;
+import com.mindcare.view.admin.GestionUserView;
 import com.mindcare.view.auth.LoginView;
 import com.mindcare.view.client.*;
 import com.mindcare.view.psychologue.*;
@@ -75,13 +76,12 @@ public class SidebarComponent extends VBox {
 
         if (role == User.Role.CLIENT) {
             addSection(menu, "MAIN");
-            addItem(menu, "Dashboard",        Feather.HOME,           "Dashboard",        () -> new ClientDashboardView().build());
-            addItem(menu, "Gestion Commentaires", Feather.BRIEFCASE,      "Gestion Commentaires", () -> new ServiceRequestListView().build());
-            addItem(menu, "Offers Received",  Feather.INBOX,          "Offers Received",  () -> new OffersReceivedView().build());
+            addItem(menu, "Dashboard",        Feather.HOME,           "Dashboard",        this::buildClientDisabledContent);
+            addItem(menu, "Gestion Commentaires", Feather.BRIEFCASE,      "Gestion Commentaires", this::buildClientDisabledContent);
+            addItem(menu, "Offers Received",  Feather.INBOX,          "Offers Received",  this::buildClientDisabledContent);
             addItem(menu, "Prenez un rendez-vous",        Feather.FILE_TEXT,      "Prenez un rendez-vous",        () -> new ContractsView().build());
             addSection(menu, "COMMUNICATION");
-            addItem(menu, "Messages",         Feather.MESSAGE_CIRCLE, "Messages",         () -> new MessagingView().build());
-            addItem(menu, "Gestion Forum - Sujets",  Feather.HELP_CIRCLE,    "Gestion Forum - Sujets",  () -> new TicketsView().build());
+            addItem(menu, "Messages",         Feather.MESSAGE_CIRCLE, "Messages",         this::buildClientDisabledContent);
             addSection(menu, "ACCOUNT");
             addItem(menu, "Profile",          Feather.USER,           "Profile",          () -> new ClientProfileView().build());
 
@@ -93,26 +93,27 @@ public class SidebarComponent extends VBox {
             addItem(menu, "Gestion rendez-vous",        Feather.FILE_TEXT,      "Gestion rendez-vous",        () -> new com.mindcare.view.psychologue.GestionRendezVousView().build());
             addSection(menu, "COMMUNICATION");
             addItem(menu, "Messages",         Feather.MESSAGE_CIRCLE, "Messages",         () -> new PsychologueMessagingView().build());
-            addItem(menu, "Gestion Forum - Sujets",  Feather.HELP_CIRCLE,    "Gestion Forum - Sujets",  () -> new PsychologueTicketsView().build());
             addSection(menu, "CREDENTIALS");
             addItem(menu, "Gestion Forum - Messages",     Feather.AWARD,          "Gestion Forum - Messages",     () -> new CertificatesView().build());
             addSection(menu, "ACCOUNT");
             addItem(menu, "Profile",          Feather.USER,           "Profile",          () -> new PsychologueProfileView().build());
 
         } else if (role == User.Role.ADMIN || role == User.Role.SUPER_ADMIN) {
+            java.util.function.Supplier<javafx.scene.Node> userContent = () -> new GestionUserView().build();
+            java.util.function.Supplier<javafx.scene.Node> reservationsContent = () -> new GestionReservationsView().build();
+
             addSection(menu, "OVERVIEW");
-            addItem(menu, "Dashboard",        Feather.BAR_CHART_2,    "Dashboard",        () -> new AdminDashboardView().build());
+            addItem(menu, "Dashboard",        Feather.BAR_CHART_2,    "Dashboard",        userContent);
             addSection(menu, "MANAGEMENT");
-            addItem(menu, "Gestion User",            Feather.USERS,          "Gestion User",            () -> new com.mindcare.view.admin.GestionUserView().build());
-            addItem(menu, "Gestion Resources",       Feather.TAG,            "Gestion Resources",       () -> new com.mindcare.view.admin.GestionResourcesView().build());
-            addItem(menu, "Gestion Commentaires", Feather.BRIEFCASE,      "Gestion Commentaires", () -> new com.mindcare.view.admin.GestionCommentairesView().build());
-            addItem(menu, "Gestion Events",           Feather.INBOX,          "Gestion Events",           () -> new com.mindcare.view.admin.GestionEventsView().build());
-            addItem(menu, "Gestion rendez-vous",        Feather.FILE_TEXT,      "Gestion rendez-vous",        () -> new com.mindcare.view.admin.GestionReservationsView().build());
+            addItem(menu, "Gestion User",            Feather.USERS,          "Gestion User",            userContent);
+            addItem(menu, "Gestion Resources",       Feather.TAG,            "Gestion Resources",       userContent);
+            addItem(menu, "Gestion Commentaires", Feather.BRIEFCASE,      "Gestion Commentaires", userContent);
+            addItem(menu, "Gestion Events",           Feather.INBOX,          "Gestion Events",           userContent);
+            addItem(menu, "Gestion rendez-vous",        Feather.FILE_TEXT,      "Gestion rendez-vous",        reservationsContent);
             addSection(menu, "SUPPORT");
-            addItem(menu, "Gestion Forum - Sujets",          Feather.HELP_CIRCLE,    "Gestion Forum - Sujets",          () -> new com.mindcare.view.admin.GestionForumSujetsView().build());
-            addItem(menu, "Gestion Forum - Messages",     Feather.AWARD,          "Gestion Forum - Messages",     () -> new com.mindcare.view.admin.GestionForumMessagesView().build());
+            addItem(menu, "Gestion Forum - Messages",     Feather.AWARD,          "Gestion Forum - Messages",     userContent);
             addSection(menu, "SYSTEM");
-            addItem(menu, "Dossiers Étudiants",    Feather.ACTIVITY,       "Dossiers Étudiants",    () -> new com.mindcare.view.admin.DossiersEtudiantsView().build());
+            addItem(menu, "Dossiers Étudiants",    Feather.ACTIVITY,       "Dossiers Étudiants",    userContent);
         }
 
         // Activate first item by default
@@ -162,6 +163,21 @@ public class SidebarComponent extends VBox {
         if (activeButton != null) activeButton.getStyleClass().remove("active");
         activeButton = btn;
         btn.getStyleClass().add("active");
+    }
+
+    private javafx.scene.Node buildClientDisabledContent() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(28));
+
+        Label title = new Label("Section unavailable");
+        title.getStyleClass().add("page-title");
+
+        Label text = new Label("For student accounts, only 'Prenez un rendez-vous' and 'Profile' are available.");
+        text.getStyleClass().add("page-subtitle");
+        text.setWrapText(true);
+
+        box.getChildren().addAll(title, text);
+        return box;
     }
 
     // â”€â”€ User Area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -195,6 +195,9 @@ public class PsychologueProfileLegacyContent implements NavigationManager.Builda
     private void showInfo(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
@@ -203,6 +206,9 @@ public class PsychologueProfileLegacyContent implements NavigationManager.Builda
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Profile Error");
+        alert.getDialogPane().getStylesheets().add(
+            getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm()
+        );
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
