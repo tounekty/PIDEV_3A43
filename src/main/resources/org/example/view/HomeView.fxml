@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import java.net.URL?>
+
+<VBox xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" style="-fx-background-color: #f3f4f6;">
+    <stylesheets>
+        <URL value="@mindcare-theme.css" />
+    </stylesheets>
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20" />
+    </padding>
+
+    <children>
+        <ScrollPane fitToWidth="true" pannable="true" hbarPolicy="NEVER" style="-fx-background-color:transparent; -fx-background:transparent;" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox spacing="30" alignment="CENTER" styleClass="dashboard-card" style="-fx-padding: 50px;">
+                    <children>
+                        <VBox alignment="CENTER" spacing="10">
+                            <Label text="Welcome to MindCare" style="-fx-text-fill: #111827; -fx-font-size: 36px; -fx-font-weight: 900; -fx-font-family: 'Segoe UI';" />
+                            <Label text="Your mental well-being is our priority." style="-fx-text-fill: #6b7280; -fx-font-size: 18px;" />
+                        </VBox>
+
+                        <HBox spacing="25" alignment="CENTER" style="-fx-padding: 20px 0;">
+                            <children>
+                                <VBox spacing="10" alignment="CENTER" style="-fx-background-color: linear-gradient(to bottom right, #6366f1, #4f46e5); -fx-background-radius: 16px; -fx-padding: 30px; -fx-min-width: 200px; -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.3), 15, 0, 0, 5);">
+                                    <children>
+                                        <Label fx:id="homeEventsIcon" text="📅" style="-fx-font-size: 40px;" />
+                                        <Label fx:id="homeEventsCount" text="0" style="-fx-text-fill: white; -fx-font-size: 36px; -fx-font-weight: bold;" />
+                                        <Label text="Events" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 16px; -fx-font-weight: bold;" />
+                                    </children>
+                                </VBox>
+                                <VBox spacing="10" alignment="CENTER" style="-fx-background-color: linear-gradient(to bottom right, #ec4899, #db2777); -fx-background-radius: 16px; -fx-padding: 30px; -fx-min-width: 200px; -fx-effect: dropshadow(gaussian, rgba(236,72,153,0.3), 15, 0, 0, 5);">
+                                    <children>
+                                        <Label fx:id="homeForumIcon" text="💬" style="-fx-font-size: 40px;" />
+                                        <Label fx:id="homeForumCount" text="0" style="-fx-text-fill: white; -fx-font-size: 36px; -fx-font-weight: bold;" />
+                                        <Label text="Discussions" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 16px; -fx-font-weight: bold;" />
+                                    </children>
+                                </VBox>
+                                <VBox spacing="10" alignment="CENTER" style="-fx-background-color: linear-gradient(to bottom right, #0ea5e9, #0284c7); -fx-background-radius: 16px; -fx-padding: 30px; -fx-min-width: 200px; -fx-effect: dropshadow(gaussian, rgba(14,165,233,0.3), 15, 0, 0, 5);">
+                                    <children>
+                                        <Label fx:id="homeReservationsIcon" text="🎟" style="-fx-font-size: 40px;" />
+                                        <Label fx:id="homeReservationsCount" text="0" style="-fx-text-fill: white; -fx-font-size: 36px; -fx-font-weight: bold;" />
+                                        <Label text="Reservations" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 16px; -fx-font-weight: bold;" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+
+                        <VBox alignment="CENTER" spacing="15" style="-fx-padding: 10px 0 0 0;">
+                            <Label text="Quick Actions" style="-fx-text-fill: #111827; -fx-font-size: 22px; -fx-font-weight: bold;" />
+                            <HBox spacing="20" alignment="CENTER">
+                                <children>
+                                    <Button text="Browse Events" onAction="#handleGoEvents" styleClass="btn-primary" style="-fx-padding: 12px 24px; -fx-font-size: 14px;" />
+                                    <Button text="Visit Forum" onAction="#handleGoForum" styleClass="btn-secondary" style="-fx-padding: 12px 24px; -fx-font-size: 14px; -fx-background-color: #f9fafb;" />
+                                </children>
+                            </HBox>
+                        </VBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</VBox>

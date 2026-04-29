@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" spacing="20" style="-fx-background-color: transparent; -fx-padding: 10;">
+    <children>
+        <VBox spacing="5" style="-fx-padding: 0 0 10 0;">
+            <Label text="Admin Dashboard" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-family: 'Segoe UI', sans-serif;" />
+            <Label text="Manage users, platform settings, and monitor activity across the application." style="-fx-font-size: 14px; -fx-text-fill: #64748b; -fx-font-family: 'Segoe UI', sans-serif;" />
+        </VBox>
+
+        <BorderPane VBox.vgrow="ALWAYS">
+            <left>
+                <VBox spacing="10" style="-fx-background-color: white; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 15, 0, 0, 5); -fx-padding: 24;" prefWidth="260">
+                    <children>
+                        <Label text="NAVIGATION" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #94a3b8; -fx-padding: 0 0 8 5; -fx-letter-spacing: 1px;" />
+                        
+                        <Button fx:id="adminDashboardNavButton" text="📊 Admin Dashboard" alignment="BASELINE_LEFT" maxWidth="Infinity" 
+                            style="-fx-background-color: #eff6ff; -fx-text-fill: #2563eb; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+
+                        <Button fx:id="adminUsersNavButton" text="👥 User Management" alignment="BASELINE_LEFT" maxWidth="Infinity" 
+                                style="-fx-background-color: #eff6ff; -fx-text-fill: #2563eb; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+                                
+                        <Button text="📅 Events Overview" alignment="BASELINE_LEFT" maxWidth="Infinity" disable="true"
+                                style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+                                
+                        <Button text="✅ Reservations" alignment="BASELINE_LEFT" maxWidth="Infinity" disable="true"
+                                style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+                                
+                        <Button text="💬 Forum Moderation" alignment="BASELINE_LEFT" maxWidth="Infinity" disable="true"
+                                style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+                                
+                        <Button text="📊 Platform Reports" alignment="BASELINE_LEFT" maxWidth="Infinity" disable="true"
+                                style="-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 14 16; -fx-background-radius: 10; -fx-cursor: hand;" />
+                    </children>
+                    <BorderPane.margin>
+                        <Insets right="24" />
+                    </BorderPane.margin>
+                </VBox>
+            </left>
+            
+            <center>
+                <StackPane fx:id="adminContentPane" style="-fx-background-color: transparent;">
+                    <children>
+                        <VBox fx:id="adminDashboardStatsPlaceholder" />
+                    </children>
+                </StackPane>
+            </center>
+        </BorderPane>
+    </children>
+</VBox>
