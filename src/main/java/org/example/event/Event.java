@@ -17,6 +17,7 @@ public class Event {
     private String location;
     private String status;
     private int durationMinutes;
+    private double overbookingPercentage; // % de surbooking autorisé (ex: 10 = +10%)
 
     public Event() {
     }
@@ -179,5 +180,17 @@ public class Event {
 
     public void setDurationMinutes(int durationMinutes) {
         this.durationMinutes = durationMinutes;
+    }
+
+    public double getOverbookingPercentage() {
+        return overbookingPercentage;
+    }
+
+    public void setOverbookingPercentage(double overbookingPercentage) {
+        // Valider que le pourcentage est entre 0 et 100
+        if (overbookingPercentage < 0 || overbookingPercentage > 100) {
+            throw new IllegalArgumentException("Le surbooking doit être entre 0 et 100%");
+        }
+        this.overbookingPercentage = overbookingPercentage;
     }
 }

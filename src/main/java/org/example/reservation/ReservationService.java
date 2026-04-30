@@ -2,6 +2,7 @@ package org.example.reservation;
 
 import org.example.config.DatabaseConnection;
 import org.example.event.Event;
+import org.example.event.SmartCapacityManager;
 import org.example.util.ValidationUtil;
 
 import java.sql.Connection;
@@ -19,14 +20,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Service de gestion des réservations avec support de la capacité dynamique
+ * Gère les réservations confirmées et en liste d'attente
+ */
 public class ReservationService {
+    private final SmartCapacityManager capacityManager = new SmartCapacityManager();
+    private final WaitlistService waitlistService = new WaitlistService();
+
     public void initializeReservations() throws SQLException {
         String sql = """
                 CREATE TABLE IF NOT EXISTS reservation_event (
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     event_id INT NOT NULL,
                     user_id INT NOT NULL,
-                    reserved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
+                    reserved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    seat_category VARCHAR(50) DEFAULT 'STANDARD',
+                    price DECIMAL(10, 2) DEFAULT 0.00
                 )
                 """;
 
@@ -35,38 +46,33 @@ public class ReservationService {
             statement.execute(sql);
             ensureColumnExists(statement, "event_id", "ALTER TABLE reservation_event ADD COLUMN event_id INT NOT NULL");
             ensureColumnExists(statement, "user_id", "ALTER TABLE reservation_event ADD COLUMN user_id INT NOT NULL");
+            ensureColumnExists(statement, "status", "ALTER TABLE reservation_event ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED'");
             ensureColumnExists(statement, "reserved_at", "ALTER TABLE reservation_event ADD COLUMN reserved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+            ensureColumnExists(statement, "seat_category", "ALTER TABLE reservation_event ADD COLUMN seat_category VARCHAR(50) DEFAULT 'STANDARD'");
+            ensureColumnExists(statement, "price", "ALTER TABLE reservation_event ADD COLUMN price DECIMAL(10, 2) DEFAULT 0.00");
 
-            if (columnExists(statement, "statut")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN statut VARCHAR(20) NULL DEFAULT NULL");
-            }
-            if (columnExists(statement, "nom")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN nom VARCHAR(100) NULL DEFAULT NULL");
-            }
-            if (columnExists(statement, "prenom")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN prenom VARCHAR(100) NULL DEFAULT NULL");
-            }
-            if (columnExists(statement, "telephone")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN telephone VARCHAR(30) NULL DEFAULT NULL");
-            }
-            if (columnExists(statement, "id_event")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN id_event INT NULL DEFAULT NULL");
-            }
-            if (columnExists(statement, "id_user")) {
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN id_user INT NULL DEFAULT NULL");
-            }
+            // Migrate legacy rows: set NULL or empty status to CONFIRMED
+            statement.execute(
+                "UPDATE reservation_event SET status = 'CONFIRMED' " +
+                "WHERE status IS NULL OR status = '' OR status NOT IN ('CONFIRMED','WAITLISTED','CANCELLED')"
+            );
 
-            if (columnExists(statement, "date_reservation")) {
-                if (!columnExists(statement, "reserved_at")) {
-                    statement.execute("ALTER TABLE reservation_event ADD COLUMN reserved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-                }
-                statement.execute("UPDATE reservation_event SET reserved_at = date_reservation WHERE reserved_at IS NULL");
-                statement.execute("ALTER TABLE reservation_event MODIFY COLUMN date_reservation DATETIME NULL DEFAULT CURRENT_TIMESTAMP");
-            }
+            // Nettoyer les anciennes colonnes non utilisées
+            cleanupOldColumns(statement);
         }
     }
 
-    public void reserveEvent(Event event, int userId) throws SQLException {
+    /**
+     * Réserve un événement avec gestion automatique de la liste d'attente
+     */
+    public ReservationResult reserveEvent(Event event, int userId) throws SQLException {
+        return reserveEventWithDetails(event, userId, null, null);
+    }
+
+    /**
+     * Réserve un événement avec détails supplémentaires (catégorie de siège, prix)
+     */
+    public ReservationResult reserveEventWithDetails(Event event, int userId, String seatCategory, Double price) throws SQLException {
         // Validation des données
         try {
             ValidationUtil.validateReservation(event.getId(), userId);
@@ -74,55 +80,234 @@ public class ReservationService {
             throw new SQLException("Erreur de validation : " + e.getMessage(), e);
         }
 
-        // Vérifier si l'utilisateur a déjà une réservation
-        if (hasReservation(event.getId(), userId)) {
+        // Vérifier si l'utilisateur a déjà une réservation confirmée ou en attente
+        if (hasActiveReservation(event.getId(), userId)) {
             throw new SQLException("Vous avez déjà réservé cet événement.");
         }
 
-        // Vérifier la capacité
-        int currentReservations = getReservationCountByEvent(event.getId());
-        if (currentReservations >= event.getCapacite()) {
-            throw new SQLException("La capacité maximale de cet événement est atteinte.");
+        SmartCapacityManager.CapacitySummary summary = capacityManager.getCapacitySummary(event.getId());
+        if (summary == null) {
+            throw new SQLException("Événement non trouvé");
         }
 
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            String timestampColumn = getTimestampColumn(connection);
-            String sql = "INSERT INTO reservation_event(event_id, user_id, " + timestampColumn + ") VALUES (?, ?, ?)";
-
-            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                preparedStatement.setInt(1, event.getId());
-                preparedStatement.setInt(2, userId);
-                preparedStatement.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
-                preparedStatement.executeUpdate();
-            }
+        // Déterminer le statut de la réservation
+        if (summary.confirmedSpaceAvailable) {
+            // Ajouter comme confirmé
+            return confirmReservationWithDetails(event.getId(), userId, seatCategory, price);
+        } else if (summary.spotsAvailable) {
+            // Ajouter à la liste d'attente
+            return addToWaitlist(event.getId(), userId);
+        } else {
+            throw new SQLException("Cet événement est complet et la liste d'attente est saturée.");
         }
     }
 
-    public boolean hasReservation(int eventId, int userId) throws SQLException {
-        String sql = "SELECT id FROM reservation_event WHERE event_id = ? AND user_id = ?";
+    /**
+     * Ajoute une réservation confirmée avec détails supplémentaires
+     */
+    private ReservationResult confirmReservationWithDetails(int eventId, int userId, String seatCategory, Double price) throws SQLException {
+        String sql = """
+                INSERT INTO reservation_event(event_id, user_id, status, reserved_at, seat_category, price)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, eventId);
-            preparedStatement.setInt(2, userId);
+             PreparedStatement stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setInt(1, eventId);
+            stmt.setInt(2, userId);
+            stmt.setString(3, ReservationStatus.CONFIRMED.getValue());
+            stmt.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(5, seatCategory != null ? seatCategory : "STANDARD");
+            stmt.setDouble(6, price != null ? price : 0.0);
+            stmt.executeUpdate();
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                return resultSet.next();
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return new ReservationResult(generatedKeys.getInt(1), ReservationStatus.CONFIRMED, null);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Ajoute une réservation à la liste d'attente
+     */
+    private ReservationResult addToWaitlist(int eventId, int userId) throws SQLException {
+        int reservationId = waitlistService.addToWaitlist(eventId, userId);
+        int position = waitlistService.getWaitlistPosition(eventId, userId);
+        return new ReservationResult(reservationId, ReservationStatus.WAITLISTED, position);
+    }
+
+    /**
+     * Annule une réservation et promeut automatiquement depuis la liste d'attente
+     */
+    public boolean cancelReservation(int eventId, int reservationId, int userId) throws SQLException {
+        ReservationStatus status = getReservationStatus(reservationId);
+        
+        if (status == ReservationStatus.WAITLISTED) {
+            return waitlistService.cancelWaitlistReservation(eventId, reservationId);
+        } else if (status == ReservationStatus.CONFIRMED) {
+            return cancelConfirmedReservation(eventId, reservationId);
+        }
+        return false;
+    }
+
+    /**
+     * Annule une réservation confirmée et promeut depuis la liste d'attente
+     */
+    private boolean cancelConfirmedReservation(int eventId, int reservationId) throws SQLException {
+        String sql = """
+                UPDATE reservation_event
+                SET status = ?
+                WHERE id = ? AND event_id = ?
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ReservationStatus.CANCELLED.getValue());
+            stmt.setInt(2, reservationId);
+            stmt.setInt(3, eventId);
+            boolean cancelled = stmt.executeUpdate() > 0;
+            
+            if (cancelled) {
+                // Promouvoir depuis la liste d'attente
+                waitlistService.promoteFromWaitlist(eventId);
+            }
+            return cancelled;
+        }
+    }
+
+    /**
+     * Quitter un événement (alias pour annuler une réservation active)
+     */
+    public boolean leaveEvent(int eventId, int userId) throws SQLException {
+        // Trouver la réservation active (confirmée ou en attente)
+        String sql = """
+                SELECT id FROM reservation_event 
+                WHERE event_id = ? AND user_id = ? AND status IN (?, ?)
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, eventId);
+            stmt.setInt(2, userId);
+            stmt.setString(3, ReservationStatus.CONFIRMED.getValue());
+            stmt.setString(4, ReservationStatus.WAITLISTED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int reservationId = rs.getInt("id");
+                    return cancelReservation(eventId, reservationId, userId);
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Vérifie si l'utilisateur a une réservation active
+     */
+    public boolean hasActiveReservation(int eventId, int userId) throws SQLException {
+        String sql = """
+                SELECT id FROM reservation_event 
+                WHERE event_id = ? AND user_id = ? AND status IN (?, ?)
+                """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, eventId);
+            stmt.setInt(2, userId);
+            stmt.setString(3, ReservationStatus.CONFIRMED.getValue());
+            stmt.setString(4, ReservationStatus.WAITLISTED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
             }
         }
     }
 
+    /**
+     * Obtient le statut d'une réservation
+     */
+    public ReservationStatus getReservationStatus(int reservationId) throws SQLException {
+        String sql = "SELECT status FROM reservation_event WHERE id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reservationId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return ReservationStatus.fromString(rs.getString("status"));
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Récupère tous les détails d'une réservation incluant seat_category et price
+     */
+    public Map<String, Object> getReservationDetails(int reservationId) throws SQLException {
+        String sql = """
+                SELECT id, event_id, user_id, status, reserved_at, seat_category, price
+                FROM reservation_event WHERE id = ?
+                """;
+        
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, reservationId);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> details = new java.util.HashMap<>();
+                    details.put("id", rs.getInt("id"));
+                    details.put("eventId", rs.getInt("event_id"));
+                    details.put("userId", rs.getInt("user_id"));
+                    details.put("status", rs.getString("status"));
+                    details.put("reservedAt", rs.getTimestamp("reserved_at"));
+                    details.put("seatCategory", rs.getString("seat_category"));
+                    details.put("price", rs.getDouble("price"));
+                    return details;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Obtient le nombre total de réservations (confirmées + en attente) pour un événement
+     */
+    public int getReservationCountByEvent(int eventId) throws SQLException {
+        return capacityManager.getTotalReservationCount(eventId);
+    }
+
+    /**
+     * Obtient le nombre de réservations confirmées pour un événement
+     */
+    public int getConfirmedCountByEvent(int eventId) throws SQLException {
+        return capacityManager.getConfirmedCount(eventId);
+    }
+
+    /**
+     * Obtient les IDs des événements réservés par un utilisateur (confirmés seulement)
+     */
     public Set<Integer> getReservedEventIdsByUser(int userId) throws SQLException {
-        String sql = "SELECT event_id FROM reservation_event WHERE user_id = ?";
+        String sql = """
+                SELECT DISTINCT event_id FROM reservation_event 
+                WHERE user_id = ? AND status = ?
+                """;
         Set<Integer> reservedIds = new HashSet<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, userId);
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setString(2, ReservationStatus.CONFIRMED.getValue());
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    reservedIds.add(resultSet.getInt("event_id"));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    reservedIds.add(rs.getInt("event_id"));
                 }
             }
         }
@@ -130,46 +315,264 @@ public class ReservationService {
         return reservedIds;
     }
 
-    public boolean leaveEvent(int eventId, int userId) throws SQLException {
-        String sql = "DELETE FROM reservation_event WHERE event_id = ? AND user_id = ?";
+    /**
+     * Récupère tous les enregistrements de réservation
+     */
+    public List<ReservationRecord> getAllReservations() throws SQLException {
+        String sql = """
+                SELECT r.id, r.event_id, r.user_id, r.status, r.reserved_at,
+                       e.titre AS event_title,
+                       u.username
+                FROM reservation_event r
+                LEFT JOIN event e ON e.id = r.event_id
+                LEFT JOIN app_user u ON u.id = r.user_id
+                WHERE r.status IN (?, ?)
+                ORDER BY r.reserved_at DESC
+                """;
+
+        List<ReservationRecord> reservations = new ArrayList<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, eventId);
-            preparedStatement.setInt(2, userId);
-            return preparedStatement.executeUpdate() > 0;
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ReservationStatus.CONFIRMED.getValue());
+            stmt.setString(2, ReservationStatus.WAITLISTED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Timestamp reservedAt = rs.getTimestamp("reserved_at");
+                    reservations.add(new ReservationRecord(
+                            rs.getInt("id"),
+                            rs.getInt("event_id"),
+                            rs.getInt("user_id"),
+                            rs.getString("event_title"),
+                            rs.getString("username"),
+                            reservedAt == null ? LocalDateTime.now() : reservedAt.toLocalDateTime()
+                    ));
+                }
+            }
+        }
+
+        return reservations;
+    }
+
+    /**
+     * Récupère les participants confirmés d'un événement
+     */
+    public List<ReservationRecord> getParticipantsByEvent(int eventId) throws SQLException {
+        String sql = """
+                SELECT r.id, r.event_id, r.user_id, r.status, r.reserved_at,
+                       e.titre AS event_title,
+                       u.username
+                FROM reservation_event r
+                LEFT JOIN event e ON e.id = r.event_id
+                LEFT JOIN app_user u ON u.id = r.user_id
+                WHERE r.event_id = ? AND r.status = ?
+                ORDER BY r.reserved_at ASC
+                """;
+
+        List<ReservationRecord> participants = new ArrayList<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, eventId);
+            stmt.setString(2, ReservationStatus.CONFIRMED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Timestamp reservedAt = rs.getTimestamp("reserved_at");
+                    participants.add(new ReservationRecord(
+                            rs.getInt("id"),
+                            rs.getInt("event_id"),
+                            rs.getInt("user_id"),
+                            rs.getString("event_title"),
+                            rs.getString("username"),
+                            reservedAt == null ? LocalDateTime.now() : reservedAt.toLocalDateTime()
+                    ));
+                }
+            }
+        }
+
+        return participants;
+    }
+
+    /**
+     * Récupère la liste d'attente d'un événement
+     */
+    public List<WaitlistService.WaitlistEntry> getWaitlistByEvent(int eventId) throws SQLException {
+        return waitlistService.getWaitlist(eventId);
+    }
+
+    /**
+     * Récupère les réservations groupées par événement
+     */
+    public Map<Integer, List<ReservationRecord>> getReservationsGroupedByEvent() throws SQLException {
+        Map<Integer, List<ReservationRecord>> grouped = new LinkedHashMap<>();
+        for (ReservationRecord reservation : getAllReservations()) {
+            grouped.computeIfAbsent(reservation.getEventId(), ignored -> new ArrayList<>()).add(reservation);
+        }
+        return grouped;
+    }
+
+    /**
+     * Supprime toutes les réservations d'un événement
+     */
+    public void deleteReservationsForEvent(int eventId) throws SQLException {
+        String sql = "DELETE FROM reservation_event WHERE event_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, eventId);
+            stmt.executeUpdate();
         }
     }
 
-    public Map<Integer, Integer> getReservationCountsByEvent() throws SQLException {
+    /**
+     * Obtient les statistiques par catégorie
+     */
+    public Map<String, Map<String, Integer>> getStatsByCategory() throws SQLException {
         String sql = """
-                SELECT event_id, COUNT(*) AS total
-                FROM reservation_event
-                GROUP BY event_id
+                SELECT e.categorie,
+                       COUNT(CASE WHEN r.status = 'CONFIRMED' THEN 1 END) AS confirmed,
+                       COUNT(CASE WHEN r.status = 'WAITLISTED' THEN 1 END) AS waitlisted,
+                       SUM(e.capacite) AS total_capacity
+                FROM event e
+                LEFT JOIN reservation_event r ON e.id = r.event_id
+                GROUP BY e.categorie
+                ORDER BY confirmed DESC
                 """;
-        Map<Integer, Integer> counts = new HashMap<>();
+        Map<String, Map<String, Integer>> stats = new LinkedHashMap<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
              Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(sql)) {
             while (resultSet.next()) {
-                counts.put(resultSet.getInt("event_id"), resultSet.getInt("total"));
+                String categorie = resultSet.getString("categorie");
+                categorie = categorie == null || categorie.isBlank() ? "Non catégorisé" : categorie;
+                Map<String, Integer> data = new LinkedHashMap<>();
+                data.put("confirmées", resultSet.getInt("confirmed"));
+                data.put("en_attente", resultSet.getInt("waitlisted"));
+                data.put("capacité_totale", resultSet.getInt("total_capacity"));
+                stats.put(categorie, data);
             }
         }
 
+        return stats;
+    }
+
+    /**
+     * Obtient le nombre de réservations par catégorie
+     */
+    public Map<String, Integer> getReservationCountByCategory() throws SQLException {
+        String sql = """
+                        SELECT e.categorie, COUNT(r.id) as count FROM event e
+                        LEFT JOIN reservation_event r ON e.id = r.event_id AND r.status = 'CONFIRMED'
+                        GROUP BY e.categorie ORDER BY count DESC
+                        """;
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                String categorie = resultSet.getString("categorie");
+                categorie = categorie == null || categorie.isBlank() ? "Non catégorisé" : categorie;
+                counts.put(categorie, resultSet.getInt("count"));
+            }
+        }
         return counts;
     }
 
-    public int getReservationCountByEvent(int eventId) throws SQLException {
-        String sql = "SELECT COUNT(*) AS total FROM reservation_event WHERE event_id = ?";
+    /**
+     * Obtient le nombre d'événements par catégorie
+     */
+    public Map<String, Integer> getEventCountByCategory() throws SQLException {
+        String sql = "SELECT categorie, COUNT(*) as count FROM event GROUP BY categorie ORDER BY count DESC";
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                String categorie = resultSet.getString("categorie");
+                categorie = categorie == null || categorie.isBlank() ? "Non catégorisé" : categorie;
+                counts.put(categorie, resultSet.getInt("count"));
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * Obtient le nombre de réservations par événement
+     */
+    public Map<Integer, Integer> getReservationCountsByEvent() throws SQLException {
+        String sql = "SELECT event_id, COUNT(*) as count FROM reservation_event WHERE status = 'CONFIRMED' GROUP BY event_id";
+        Map<Integer, Integer> counts = new HashMap<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                counts.put(resultSet.getInt("event_id"), resultSet.getInt("count"));
+            }
+        }
+        return counts;
+    }
+
+    /**
+     * Obtient les statistiques détaillées des réservations par événement
+     */
+    public List<Map<String, Object>> getEventReservationStats() throws SQLException {
+        String sql = """
+                SELECT e.id,
+                       e.titre,
+                       e.categorie,
+                       e.capacite,
+                       e.overbooking_percentage,
+                       COUNT(CASE WHEN r.status = 'CONFIRMED' THEN 1 END) AS confirmed_count,
+                       COUNT(CASE WHEN r.status = 'WAITLISTED' THEN 1 END) AS waitlist_count
+                FROM event e
+                LEFT JOIN reservation_event r ON e.id = r.event_id
+                GROUP BY e.id, e.titre, e.categorie, e.capacite, e.overbooking_percentage
+                ORDER BY e.titre
+                """;
+        List<Map<String, Object>> stats = new ArrayList<>();
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, eventId);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                int capacity = resultSet.getInt("capacite");
+                double overbooking = resultSet.getDouble("overbooking_percentage");
+                int confirmed = resultSet.getInt("confirmed_count");
+                int waitlisted = resultSet.getInt("waitlist_count");
+                int maxCapacity = (int) Math.ceil(capacity * (1 + overbooking / 100.0));
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt("total");
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", resultSet.getInt("id"));
+                row.put("titre", resultSet.getString("titre"));
+                row.put("categorie", resultSet.getString("categorie"));
+                row.put("capacité_réelle", capacity);
+                row.put("capacité_max", maxCapacity);
+                row.put("surbooking_%", overbooking);
+                row.put("confirmées", confirmed);
+                row.put("en_attente", waitlisted);
+                row.put("taux_occupation", capacity > 0 ? (int) (100.0 * confirmed / capacity) : 0);
+                stats.add(row);
+            }
+        }
+
+        return stats;
+    }
+
+    /**
+     * Obtient le nombre total de réservations confirmées
+     */
+    public int getTotalReservations() throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM reservation_event WHERE status = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ReservationStatus.CONFIRMED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("total");
                 }
             }
         }
@@ -177,125 +580,27 @@ public class ReservationService {
         return 0;
     }
 
-    public List<ReservationRecord> getAllReservations() throws SQLException {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            boolean hasReservedAt = hasColumn(connection, "reserved_at");
-            boolean hasDateReservation = hasColumn(connection, "date_reservation");
-            String timestampExpression;
-
-            if (hasReservedAt && hasDateReservation) {
-                timestampExpression = "COALESCE(r.reserved_at, r.date_reservation) AS reserved_at";
-            } else if (hasReservedAt) {
-                timestampExpression = "r.reserved_at AS reserved_at";
-            } else if (hasDateReservation) {
-                timestampExpression = "r.date_reservation AS reserved_at";
-            } else {
-                timestampExpression = "CURRENT_TIMESTAMP AS reserved_at";
-            }
-
-            String sql = String.format("""
-                    SELECT r.id,
-                           r.event_id,
-                           r.user_id,
-                           e.titre AS event_title,
-                           u.username,
-                           %s
-                    FROM reservation_event r
-                    LEFT JOIN event e ON e.id = r.event_id
-                    LEFT JOIN app_user u ON u.id = r.user_id
-                    ORDER BY reserved_at DESC
-                    """, timestampExpression);
-
-            java.util.ArrayList<ReservationRecord> reservations = new java.util.ArrayList<>();
-
-            try (Statement statement = connection.createStatement();
-                 ResultSet resultSet = statement.executeQuery(sql)) {
-                while (resultSet.next()) {
-                    Timestamp reservedAt = resultSet.getTimestamp("reserved_at");
-                    reservations.add(new ReservationRecord(
-                            resultSet.getInt("id"),
-                            resultSet.getInt("event_id"),
-                            resultSet.getInt("user_id"),
-                            resultSet.getString("event_title"),
-                            resultSet.getString("username"),
-                            reservedAt == null ? LocalDateTime.now() : reservedAt.toLocalDateTime()
-                    ));
-                }
-            }
-
-            return reservations;
-        }
-    }
-
-    public List<ReservationRecord> getParticipantsByEvent(int eventId) throws SQLException {
-        try (Connection connection = DatabaseConnection.getConnection()) {
-            boolean hasReservedAt = hasColumn(connection, "reserved_at");
-            boolean hasDateReservation = hasColumn(connection, "date_reservation");
-            String timestampExpression;
-
-            if (hasReservedAt && hasDateReservation) {
-                timestampExpression = "COALESCE(r.reserved_at, r.date_reservation) AS reserved_at";
-            } else if (hasReservedAt) {
-                timestampExpression = "r.reserved_at AS reserved_at";
-            } else if (hasDateReservation) {
-                timestampExpression = "r.date_reservation AS reserved_at";
-            } else {
-                timestampExpression = "CURRENT_TIMESTAMP AS reserved_at";
-            }
-
-            String sql = String.format("""
-                    SELECT r.id,
-                           r.event_id,
-                           r.user_id,
-                           e.titre AS event_title,
-                           u.username,
-                           %s
-                    FROM reservation_event r
-                    LEFT JOIN event e ON e.id = r.event_id
-                    LEFT JOIN app_user u ON u.id = r.user_id
-                    WHERE r.event_id = ?
-                    ORDER BY reserved_at DESC
-                    """, timestampExpression);
-
-            List<ReservationRecord> reservations = new ArrayList<>();
-            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-                preparedStatement.setInt(1, eventId);
-                try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                    while (resultSet.next()) {
-                        Timestamp reservedAt = resultSet.getTimestamp("reserved_at");
-                        reservations.add(new ReservationRecord(
-                                resultSet.getInt("id"),
-                                resultSet.getInt("event_id"),
-                                resultSet.getInt("user_id"),
-                                resultSet.getString("event_title"),
-                                resultSet.getString("username"),
-                                reservedAt == null ? LocalDateTime.now() : reservedAt.toLocalDateTime()
-                        ));
-                    }
-                }
-            }
-            return reservations;
-        }
-    }
-
-    public Map<Integer, java.util.List<ReservationRecord>> getReservationsGroupedByEvent() throws SQLException {
-        Map<Integer, java.util.List<ReservationRecord>> grouped = new LinkedHashMap<>();
-        for (ReservationRecord reservation : getAllReservations()) {
-            grouped.computeIfAbsent(reservation.getEventId(), ignored -> new java.util.ArrayList<>()).add(reservation);
-        }
-        return grouped;
-    }
-
-    public void deleteReservationsForEvent(int eventId) throws SQLException {
-        String sql = "DELETE FROM reservation_event WHERE event_id = ?";
+    /**
+     * Obtient le nombre total d'entrées en liste d'attente
+     */
+    public int getTotalWaitlisted() throws SQLException {
+        String sql = "SELECT COUNT(*) AS total FROM reservation_event WHERE status = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, eventId);
-            preparedStatement.executeUpdate();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ReservationStatus.WAITLISTED.getValue());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("total");
+                }
+            }
         }
+
+        return 0;
     }
 
+    // Méthodes utilitaires privées
     private void ensureColumnExists(Statement statement, String columnName, String alterSql) throws SQLException {
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM reservation_event LIKE '" + columnName + "'")) {
             if (!columns.next()) {
@@ -310,146 +615,40 @@ public class ReservationService {
         }
     }
 
-    private String getTimestampColumn(Connection connection) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
-            if (columnExists(statement, "reserved_at")) {
-                return "reserved_at";
+    private void cleanupOldColumns(Statement statement) throws SQLException {
+        String[] oldColumns = {"statut", "nom", "prenom", "telephone", "id_event", "id_user", "date_reservation"};
+        for (String column : oldColumns) {
+            try {
+                if (columnExists(statement, column)) {
+                    statement.execute("ALTER TABLE reservation_event MODIFY COLUMN " + column + " VARCHAR(255) NULL");
+                }
+            } catch (SQLException e) {
+                // Colonne déjà supprimée ou ignorée
             }
-            if (columnExists(statement, "date_reservation")) {
-                return "date_reservation";
-            }
-        }
-        return "reserved_at";
-    }
-
-    private boolean hasColumn(Connection connection, String columnName) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
-            return columnExists(statement, columnName);
         }
     }
 
-    public Map<String, Map<String, Integer>> getStatsByCategory() throws SQLException {
-        String sql = """
-                SELECT e.categorie,
-                       COUNT(r.id) AS total_reservations,
-                       SUM(e.capacite) AS total_capacity
-                FROM event e
-                LEFT JOIN reservation_event r ON e.id = r.event_id
-                GROUP BY e.categorie
-                ORDER BY total_reservations DESC
-                """;
-        Map<String, Map<String, Integer>> stats = new LinkedHashMap<>();
+    /**
+     * Classe interne pour représenter le résultat d'une réservation
+     */
+    public static class ReservationResult {
+        public final int reservationId;
+        public final ReservationStatus status;
+        public final Integer waitlistPosition; // null si confirmé
 
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            while (resultSet.next()) {
-                String categorie = resultSet.getString("categorie");
-                int reservations = resultSet.getInt("total_reservations");
-                int capacity = resultSet.getInt("total_capacity");
-                categorie = categorie == null || categorie.isBlank() ? "Non catégorisé" : categorie;
-                Map<String, Integer> data = new LinkedHashMap<>();
-                data.put("reservations", reservations);
-                data.put("capacity", capacity);
-                stats.put(categorie, data);
-            }
+        public ReservationResult(int reservationId, ReservationStatus status, Integer waitlistPosition) {
+            this.reservationId = reservationId;
+            this.status = status;
+            this.waitlistPosition = waitlistPosition;
         }
 
-        return stats;
-    }
-
-    public List<Map<String, Object>> getEventReservationStats() throws SQLException {
-        String sql = """
-                SELECT e.id,
-                       e.titre,
-                       e.categorie,
-                       e.capacite,
-                       COUNT(r.id) AS reservations
-                FROM event e
-                LEFT JOIN reservation_event r ON e.id = r.event_id
-                GROUP BY e.id, e.titre, e.categorie, e.capacite
-                ORDER BY e.titre
-                """;
-        List<Map<String, Object>> stats = new ArrayList<>();
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            while (resultSet.next()) {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("id", resultSet.getInt("id"));
-                row.put("titre", resultSet.getString("titre"));
-                row.put("categorie", resultSet.getString("categorie"));
-                row.put("capacite", resultSet.getInt("capacite"));
-                row.put("reservations", resultSet.getInt("reservations"));
-                row.put("taux", resultSet.getInt("capacite") > 0 
-                    ? (int) (100.0 * resultSet.getInt("reservations") / resultSet.getInt("capacite")) 
-                    : 0);
-                stats.add(row);
+        @Override
+        public String toString() {
+            if (status == ReservationStatus.CONFIRMED) {
+                return "Réservation confirmée (ID: " + reservationId + ")";
+            } else {
+                return "Ajouté à la liste d'attente (Position: " + waitlistPosition + ")";
             }
         }
-
-        return stats;
-    }
-
-    public int getTotalReservations() throws SQLException {
-        String sql = "SELECT COUNT(*) AS total FROM reservation_event";
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            if (resultSet.next()) {
-                return resultSet.getInt("total");
-            }
-        }
-
-        return 0;
-    }
-
-    public Map<String, Integer> getReservationCountByCategory() throws SQLException {
-        String sql = """
-                SELECT COALESCE(e.categorie, '') AS categorie,
-                       COUNT(r.id) AS total
-                FROM event e
-                LEFT JOIN reservation_event r ON e.id = r.event_id
-                GROUP BY e.categorie
-                ORDER BY total DESC
-                """;
-        Map<String, Integer> stats = new LinkedHashMap<>();
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            while (resultSet.next()) {
-                String categorie = resultSet.getString("categorie");
-                int count = resultSet.getInt("total");
-                stats.put(categorie, count);
-            }
-        }
-
-        return stats;
-    }
-
-    public Map<String, Integer> getEventCountByCategory() throws SQLException {
-        String sql = """
-                SELECT COALESCE(categorie, '') AS categorie,
-                       COUNT(*) AS total
-                FROM event
-                GROUP BY categorie
-                ORDER BY total DESC
-                """;
-        Map<String, Integer> stats = new LinkedHashMap<>();
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            while (resultSet.next()) {
-                String categorie = resultSet.getString("categorie");
-                int count = resultSet.getInt("total");
-                stats.put(categorie, count);
-            }
-        }
-
-        return stats;
     }
 }

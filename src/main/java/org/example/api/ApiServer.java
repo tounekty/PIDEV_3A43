@@ -56,7 +56,7 @@ public class ApiServer {
         }
     }
 
-    private void start(int port) throws IOException {
+    public void start(int port) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/api/health", new HealthHandler());
         server.createContext("/api/login", new LoginHandler());
@@ -64,6 +64,14 @@ public class ApiServer {
         server.createContext("/api/reservations", new ReservationsHandler());
         server.createContext("/api/users", new UsersHandler());
         server.createContext("/api/calendar", new CalendarHandler());
+        server.createContext("/ticket", new TicketHandler());
+        server.createContext("/ping", exchange -> {
+            byte[] b = "MindCare OK".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/plain");
+            exchange.sendResponseHeaders(200, b.length);
+            exchange.getResponseBody().write(b);
+            exchange.getResponseBody().close();
+        });
         server.setExecutor(null);
         server.start();
         System.out.println("API running on http://localhost:" + port);
@@ -275,23 +283,24 @@ public class ApiServer {
                     return;
                 }
 
-                List<Map<String, String>> suggestedSlots = new ArrayList<>();
-                LocalDateTime baseTime = LocalDateTime.now().withHour(9).withMinute(0).withSecond(0);
-                
-                for (int day = 0; day < 7; day++) {
-                    LocalDateTime slotTime = baseTime.plusDays(day);
-                    Event testEvent = new Event("test", "", slotTime, "", 0, "", "", 1);
-                    List<Event> conflicts = eventService.getConflictingEvents(testEvent, null);
-                    
-                    if (conflicts.isEmpty()) {
-                        suggestedSlots.add(Map.of(
-                            "date", slotTime.toLocalDate().toString(),
-                            "time", slotTime.toLocalTime().toString(),
-                            "duration", payload.durationMinutes.toString()
-                        ));
-                        if (suggestedSlots.size() >= 5) break;
-                    }
-                }
+                // Utilise SmartSchedulingService (IA) pour suggérer les meilleurs créneaux
+                org.example.event.SmartSchedulingService scheduler =
+                        new org.example.event.SmartSchedulingService();
+                List<org.example.event.SmartSchedulingService.SuggestedSlot> aiSlots =
+                        scheduler.suggestBestSlots(payload.category, payload.durationMinutes);
+
+                List<Map<String, Object>> suggestedSlots = aiSlots.stream().map(s -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("date", s.dateTime.toLocalDate().toString());
+                    m.put("time", s.dateTime.toLocalTime().toString());
+                    m.put("duration", payload.durationMinutes.toString());
+                    m.put("score", Math.round(s.score));
+                    m.put("successProb", Math.round(s.successProb));
+                    m.put("badge", s.badge);
+                    m.put("label", s.label);
+                    m.put("explanation", s.explanation);
+                    return m;
+                }).toList();
 
                 sendJson(exchange, 200, Map.of(
                     "type", "suggested_slots",
@@ -1109,6 +1118,7 @@ public class ApiServer {
         private String title;
         private Integer durationMinutes;
         private String preferredDate;
+        private String category; // catégorie pour SmartSchedulingService
     }
 
     private record EventRoute(Integer id, String keyword, String action) {
@@ -1127,4 +1137,608 @@ public class ApiServer {
 
     private record UserRoute(int userId, String action) {}
     private record Range(LocalDateTime start, LocalDateTime end) {}
+
+    // ── Ticket Handler — QR scan page ─────────────────────────────────────────
+    private class TicketHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // Allow all origins for mobile access
+            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendHtml(exchange, 405, buildErrorPage("Méthode non autorisée", "Requête invalide."));
+                return;
+            }
+
+            // Parse token from query string
+            String rawQuery = exchange.getRequestURI().getRawQuery();
+            String token = null;
+            if (rawQuery != null) {
+                for (String param : rawQuery.split("&")) {
+                    if (param.startsWith("token=")) {
+                        try {
+                            token = URLDecoder.decode(param.substring(6), StandardCharsets.UTF_8);
+                        } catch (Exception e) {
+                            token = param.substring(6);
+                        }
+                    }
+                }
+            }
+
+            String html;
+            if (token == null || token.isBlank()) {
+                html = buildErrorPage("QR Code invalide", "Aucun token trouvé dans ce QR code.");
+            } else {
+                html = buildTicketPage(token);
+            }
+
+            sendHtml(exchange, 200, html);
+        }
+
+        private void sendHtml(HttpExchange exchange, int status, String html) throws IOException {
+            byte[] bytes = html.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            exchange.sendResponseHeaders(status, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        }
+
+        private String buildTicketPage(String token) {
+            // Décoder le token — supporte 3 formats:
+            // 1. "MINDCARE:base64payload" (nouveau format QR autonome)
+            // 2. Base64 URL-safe pur (ancien format)
+            // 3. Payload brut avec | (très ancien format)
+            String payload = token;
+
+            // Format 1: MINDCARE:base64
+            if (token.startsWith("MINDCARE:")) {
+                try {
+                    String b64 = token.substring(9).trim();
+                    int padding = 4 - (b64.length() % 4);
+                    if (padding != 4) b64 += "=".repeat(padding);
+                    byte[] decoded = java.util.Base64.getUrlDecoder().decode(b64);
+                    String candidate = new String(decoded, StandardCharsets.UTF_8);
+                    if (candidate.contains("|")) payload = candidate;
+                } catch (Exception ignored) {}
+            } else {
+                // Format 2: Base64 URL-safe pur
+                try {
+                    String paddedToken = token.trim();
+                    int padding = 4 - (paddedToken.length() % 4);
+                    if (padding != 4) paddedToken += "=".repeat(padding);
+                    byte[] decoded = java.util.Base64.getUrlDecoder().decode(paddedToken);
+                    String candidate = new String(decoded, StandardCharsets.UTF_8);
+                    if (candidate.contains("|")) payload = candidate;
+                } catch (Exception ignored) {}
+            }
+
+            // URL-decode si le navigateur a ré-encodé
+            try {
+                String urlDecoded = java.net.URLDecoder.decode(payload, StandardCharsets.UTF_8);
+                if (urlDecoded.contains("|")) payload = urlDecoded;
+            } catch (Exception ignored) {}
+
+            // Parse: reservationId|userId|eventId|expiration|HASH
+            String[] parts = payload.split("\\|", -1);
+
+            if (parts.length != 5) {
+                return buildErrorPage("Token invalide",
+                        "Reçu " + parts.length + " partie(s). Contenu: ["
+                        + payload.substring(0, Math.min(payload.length(), 80)) + "]");
+            }
+
+            // Validate hash only (ignore expiration for demo events)
+            org.example.util.QRCodeService qr = new org.example.util.QRCodeService();
+            if (!qr.validateHashOnly(payload)) {
+                return buildErrorPage("Signature invalide",
+                        "Le hash du ticket ne correspond pas.");
+            }
+
+            int reservationId = Integer.parseInt(parts[0]);
+            int userId        = Integer.parseInt(parts[1]);
+            int eventId       = Integer.parseInt(parts[2]);
+            // String expiration = parts[3]; // Not used but part of token validation
+
+            // Load event info
+            String eventTitle = "Événement #" + eventId;
+            String eventDate  = "—";
+            String eventLieu  = "—";
+            String eventCat   = "—";
+            String eventHeure = "—";
+            try {
+                Event ev = eventService.getEventById(eventId);
+                if (ev != null) {
+                    eventTitle = ev.getTitre();
+                    if (ev.getDateEvent() != null) {
+                        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM", java.util.Locale.of("en", "US"));
+                        java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm a");
+                        eventDate = ev.getDateEvent().format(dateFormatter);
+                        eventHeure = ev.getDateEvent().format(timeFormatter);
+                    }
+                    eventLieu  = ev.getLieu() != null ? ev.getLieu() : "—";
+                    eventCat   = ev.getCategorie() != null ? ev.getCategorie() : "—";
+                }
+            } catch (Exception ignored) {}
+
+            // Load reservation details with seat_category and price
+            String seatCategory = "STANDARD";
+            double price = 0.0;
+            try {
+                java.util.Map<String, Object> details = reservationService.getReservationDetails(reservationId);
+                if (details != null) {
+                    seatCategory = (String) details.getOrDefault("seatCategory", "STANDARD");
+                    price = (Double) details.getOrDefault("price", 0.0);
+                }
+            } catch (Exception ignored) {}
+
+            // Load user info
+            String username = "Utilisateur #" + userId;
+            try {
+                var participants = reservationService.getParticipantsByEvent(eventId);
+                for (var r : participants) {
+                    if (r.getUserId() == userId) {
+                        username = r.getUsername() != null ? r.getUsername() : username;
+                        break;
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // Generate screen number and booking ID from reservation data
+            String screenNum = "SCREEN " + ((reservationId % 5) + 1);
+            String bookingId = String.format("BK%d", reservationId);
+
+            // Generate QR code image — local ZXing (no external service needed)
+            org.example.util.QRCodeService qrSvc2 = new org.example.util.QRCodeService();
+            String ticketUrlForQr = qrSvc2.generateTicketUrl(payload);
+            // Try local ZXing first, fallback to quickchart.io
+            String qrCodeUrl;
+            byte[] qrBytes = qrSvc2.generateQRBytes(ticketUrlForQr, 200);
+            if (qrBytes != null) {
+                qrCodeUrl = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(qrBytes);
+            } else {
+                qrCodeUrl = qrSvc2.generateQRImageUrl(ticketUrlForQr, 200);
+            }
+
+            return """
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>Your Ticket - Digital Pass</title>
+                      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+                      <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        
+                        body {
+                          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                          background: linear-gradient(135deg, #e8eaed 0%%, #f5f5f5 100%%);
+                          min-height: 100vh;
+                          display: flex;
+                          justify-content: center;
+                          align-items: center;
+                          padding: 20px;
+                        }
+                        
+                        .container {
+                          width: 100%%;
+                          max-width: 450px;
+                          position: relative;
+                        }
+                        
+                        .close-btn {
+                          position: absolute;
+                          top: 12px;
+                          right: 12px;
+                          width: 40px;
+                          height: 40px;
+                          border-radius: 50%%;
+                          background: #ff6b6b;
+                          border: none;
+                          cursor: pointer;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-size: 24px;
+                          color: white;
+                          z-index: 100;
+                          transition: transform 0.2s;
+                        }
+                        
+                        .close-btn:hover {
+                          transform: scale(1.1);
+                        }
+                        
+                        .ticket {
+                          background: white;
+                          border-radius: 20px;
+                          overflow: hidden;
+                          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+                          margin-top: 20px;
+                        }
+                        
+                        .ticket-header {
+                          text-align: center;
+                          padding: 24px 0 16px;
+                          color: #333;
+                          font-size: 18px;
+                          font-weight: 600;
+                          border-bottom: 1px solid #e8e8e8;
+                        }
+                        
+                        .movie-poster {
+                          position: relative;
+                          width: 100%%;
+                          height: 280px;
+                          background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          overflow: hidden;
+                        }
+                        
+                        .poster-image {
+                          width: 140px;
+                          height: 200px;
+                          background: rgba(255,255,255,0.1);
+                          border-radius: 12px;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          backdrop-filter: blur(5px);
+                        }
+                        
+                        .play-button {
+                          width: 60px;
+                          height: 60px;
+                          border-radius: 50%%;
+                          background: white;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          cursor: pointer;
+                          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                        }
+                        
+                        .play-button::after {
+                          content: '▶';
+                          color: #667eea;
+                          font-size: 20px;
+                          margin-left: 3px;
+                        }
+                        
+                        .movie-info {
+                          padding: 24px 20px;
+                          border-bottom: 1px solid #f0f0f0;
+                        }
+                        
+                        .movie-title {
+                          font-size: 20px;
+                          font-weight: 700;
+                          color: #1a1a1a;
+                          margin-bottom: 8px;
+                        }
+                        
+                        .movie-details {
+                          font-size: 13px;
+                          color: #666;
+                          margin-bottom: 4px;
+                        }
+                        
+                        .movie-time {
+                          font-size: 14px;
+                          color: #333;
+                          font-weight: 500;
+                          margin-top: 8px;
+                        }
+                        
+                        .cinema-name {
+                          font-size: 13px;
+                          color: #666;
+                          margin-top: 8px;
+                        }
+                        
+                        .action-buttons {
+                          display: flex;
+                          gap: 12px;
+                          padding: 16px 20px;
+                          border-bottom: 1px solid #f0f0f0;
+                        }
+                        
+                        .btn-trailer {
+                          flex: 1;
+                          padding: 12px;
+                          background: #e74c3c;
+                          color: white;
+                          border: none;
+                          border-radius: 8px;
+                          font-size: 14px;
+                          font-weight: 600;
+                          cursor: pointer;
+                          transition: opacity 0.2s;
+                        }
+                        
+                        .btn-trailer:hover {
+                          opacity: 0.9;
+                        }
+                        
+                        .qr-section {
+                          padding: 24px 20px;
+                          text-align: center;
+                          border-bottom: 1px solid #f0f0f0;
+                        }
+                        
+                        .qr-code {
+                          width: 180px;
+                          height: 180px;
+                          margin: 0 auto 16px;
+                          padding: 8px;
+                          background: white;
+                          border: 2px solid #333;
+                          border-radius: 8px;
+                        }
+                        
+                        .qr-code img {
+                          width: 100%%;
+                          height: 100%%;
+                        }
+                        
+                        .ticket-details {
+                          padding: 24px 20px;
+                          border-bottom: 1px solid #f0f0f0;
+                        }
+                        
+                        .detail-row {
+                          display: flex;
+                          justify-content: space-between;
+                          align-items: center;
+                          margin-bottom: 12px;
+                          font-size: 14px;
+                        }
+                        
+                        .detail-label {
+                          color: #666;
+                          font-weight: 500;
+                        }
+                        
+                        .detail-value {
+                          color: #333;
+                          font-weight: 600;
+                        }
+                        
+                        .seat-info {
+                          display: flex;
+                          justify-content: space-around;
+                          margin: 16px 0;
+                          padding: 12px;
+                          background: #f9f9f9;
+                          border-radius: 8px;
+                        }
+                        
+                        .seat-item {
+                          text-align: center;
+                        }
+                        
+                        .seat-item-label {
+                          font-size: 11px;
+                          color: #999;
+                          text-transform: uppercase;
+                          letter-spacing: 0.5px;
+                          margin-bottom: 4px;
+                        }
+                        
+                        .seat-item-value {
+                          font-size: 16px;
+                          font-weight: 700;
+                          color: #1a1a1a;
+                        }
+                        
+                        .booking-id {
+                          font-size: 13px;
+                          color: #666;
+                          margin-top: 12px;
+                          padding-top: 12px;
+                          border-top: 1px solid #e8e8e8;
+                        }
+                        
+                        .cancellation-note {
+                          padding: 12px;
+                          background: #f9f9f9;
+                          border-radius: 8px;
+                          font-size: 12px;
+                          color: #666;
+                          text-align: center;
+                          margin-bottom: 16px;
+                        }
+                        
+                        .price-section {
+                          padding: 16px 20px;
+                          display: flex;
+                          justify-content: space-between;
+                          align-items: center;
+                          border-bottom: 1px solid #f0f0f0;
+                          font-size: 16px;
+                          font-weight: 600;
+                          color: #333;
+                        }
+                        
+                        .price-value {
+                          color: #1a1a1a;
+                          font-size: 18px;
+                        }
+                        
+                        .find-venue-btn {
+                          width: 100%%;
+                          padding: 14px;
+                          background: white;
+                          color: #333;
+                          border: 1px solid #ddd;
+                          border-radius: 0 0 20px 20px;
+                          font-size: 15px;
+                          font-weight: 600;
+                          cursor: pointer;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          gap: 8px;
+                          transition: background 0.2s;
+                        }
+                        
+                        .find-venue-btn:hover {
+                          background: #f9f9f9;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="container">
+                        <button class="close-btn">✕</button>
+                        <div class="ticket">
+                          <div class="ticket-header">Your Ticket</div>
+                          
+                          <div class="movie-poster">
+                            <div class="poster-image">
+                              <div class="play-button"></div>
+                            </div>
+                          </div>
+                          
+                          <div class="movie-info">
+                            <div class="movie-title">%s</div>
+                            <div class="movie-details">%s</div>
+                            <div class="movie-time">%s | %s PM</div>
+                            <div class="cinema-name">%s</div>
+                          </div>
+                          
+                          <div class="action-buttons">
+                            <button class="btn-trailer">Watch Trailer</button>
+                          </div>
+                          
+                          <div class="qr-section">
+                            <div class="qr-code">
+                              <img src="%s" alt="QR Code">
+                            </div>
+                          </div>
+                          
+                          <div class="ticket-details">
+                            <div class="detail-row">
+                              <span class="detail-label">1 Ticket(s)</span>
+                            </div>
+                            
+                            <div class="seat-info">
+                              <div class="seat-item">
+                                <div class="seat-item-label">Screen</div>
+                                <div class="seat-item-value">%s</div>
+                              </div>
+                              <div class="seat-item">
+                                <div class="seat-item-label">Seat</div>
+                                <div class="seat-item-value">%s</div>
+                              </div>
+                            </div>
+                            
+                            <div class="booking-id">BOOKING ID: %s</div>
+                            
+                            <div class="cancellation-note">
+                              Cancellation not available for this venue
+                            </div>
+                          </div>
+                          
+                          <div class="price-section">
+                            <span>Total Amount</span>
+                            <span class="price-value">₹ %.2f</span>
+                          </div>
+                          
+                          <button class="find-venue-btn">📍 Find Venue</button>
+                        </div>
+                      </div>
+                    </body>
+                    </html>
+                    """.formatted(
+                        eventTitle, 
+                        eventCat.isEmpty() ? "—" : eventCat, 
+                        eventDate, 
+                        eventHeure,
+                        eventLieu,
+                        qrCodeUrl,
+                        screenNum,
+                        seatCategory,
+                        bookingId,
+                        price
+                    );
+        }
+
+        private String buildErrorPage(String title, String message) {
+            return """
+                    <!DOCTYPE html>
+                    <html lang="fr">
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <title>Ticket invalide</title>
+                      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                      <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body {
+                          font-family: 'Outfit', sans-serif;
+                          background: linear-gradient(135deg, #fef2f2 0%%, #ffe8e8 100%%);
+                          min-height: 100vh;
+                          display: flex;
+                          justify-content: center;
+                          align-items: center;
+                          padding: 20px;
+                        }
+                        @keyframes slideUp {
+                          from { opacity: 0; transform: translateY(30px); }
+                          to { opacity: 1; transform: translateY(0); }
+                        }
+                        .error-box {
+                          animation: slideUp 0.6s ease-out;
+                          background: white;
+                          border-radius: 28px;
+                          padding: 40px 28px;
+                          text-align: center;
+                          max-width: 400px;
+                          box-shadow: 0 8px 32px rgba(220, 38, 38, 0.12),
+                                      0 2px 8px rgba(0, 0, 0, 0.08);
+                          border: 1px solid rgba(220, 38, 38, 0.08);
+                        }
+                        .error-icon {
+                          font-size: 64px;
+                          margin-bottom: 20px;
+                          display: block;
+                        }
+                        h1 {
+                          font-size: 24px;
+                          font-weight: 700;
+                          color: #dc2626;
+                          margin-bottom: 12px;
+                        }
+                        p {
+                          color: #7c8fa3;
+                          font-size: 15px;
+                          line-height: 1.6;
+                          font-weight: 500;
+                        }
+                        .hint {
+                          margin-top: 20px;
+                          padding: 12px;
+                          background: linear-gradient(135deg, #fef2f2 0%%, #fff1f1 100%%);
+                          border-radius: 12px;
+                          border: 1px solid rgba(220, 38, 38, 0.1);
+                          font-size: 13px;
+                          color: #9ca3af;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      <div class="error-box">
+                        <span class="error-icon">❌</span>
+                        <h1>%s</h1>
+                        <p>%s</p>
+                        <div class="hint">Vérifiez que le QR code n'a pas été modifié</div>
+                      </div>
+                    </body>
+                    </html>
+                    """.formatted(title, message);
+        }
+    }
 }

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration packages="org.apache.logging.log4j.core">
+    <Properties>
+        <Property name="log.path">logs</Property>
+        <Property name="log.pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${log.pattern}" />
+        </Console>
+
+        <!-- Rolling File Appender - Daily rollover -->
+        <RollingFile name="RollingFile" fileName="${log.path}/mindcare.log"
+                     filePattern="${log.path}/mindcare-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${log.pattern}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="30" />
+        </RollingFile>
+
+        <!-- Error File Appender -->
+        <RollingFile name="ErrorFile" fileName="${log.path}/error.log"
+                     filePattern="${log.path}/error-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${log.pattern}" />
+            <Filters>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY" />
+            </Filters>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="30" />
+        </RollingFile>
+
+        <!-- Database Access Appender -->
+        <RollingFile name="DatabaseFile" fileName="${log.path}/database.log"
+                     filePattern="${log.path}/database-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${log.pattern}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+            </Policies>
+        </RollingFile>
+
+        <!-- API Access Appender -->
+        <RollingFile name="ApiFile" fileName="${log.path}/api.log"
+                     filePattern="${log.path}/api-%d{yyyy-MM-dd}-%i.log">
+            <PatternLayout pattern="${log.pattern}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+            </Policies>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+        <!-- Application loggers -->
+        <Logger name="org.example" level="DEBUG">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="RollingFile" />
+            <AppenderRef ref="ErrorFile" level="ERROR" />
+        </Logger>
+
+        <!-- Database logger -->
+        <Logger name="org.example.config" level="DEBUG">
+            <AppenderRef ref="DatabaseFile" />
+        </Logger>
+
+        <!-- API logger -->
+        <Logger name="org.example.api" level="DEBUG">
+            <AppenderRef ref="ApiFile" />
+        </Logger>
+
+        <!-- MySQL logger -->
+        <Logger name="com.mysql.cj" level="WARN" />
+        <Logger name="com.mysql.cj.jdbc" level="DEBUG">
+            <AppenderRef ref="DatabaseFile" />
+        </Logger>
+
+        <!-- Third-party libraries -->
+        <Logger name="org.apache" level="WARN" />
+        <Logger name="org.hibernate" level="WARN" />
+
+        <!-- Root logger -->
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="RollingFile" />
+            <AppenderRef ref="ErrorFile" level="ERROR" />
+        </Root>
+    </Loggers>
+</Configuration>

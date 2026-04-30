@@ -34,6 +34,8 @@ public class DualMonthCalendarView extends VBox {
     private final ReservationService reservationService;
     private final Map<LocalDate, Integer> availabilityMap = new HashMap<>();
     private final Map<LocalDate, Button> activeDateButtons = new LinkedHashMap<>();
+    private final java.util.Set<YearMonth> loadedMonths = new java.util.HashSet<>();
+    private List<Event> allEventsCache = null;
 
     private YearMonth currentMonth;
     private LocalDate selectedDate;
@@ -85,28 +87,58 @@ public class DualMonthCalendarView extends VBox {
     }
 
     private HBox createNavigationHeader() {
-        Button previousButton = createNavigationButton("<");
-        previousButton.setOnAction(event -> {
-            currentMonth = currentMonth.minusMonths(1);
+        Button previousYearButton = createNavigationButton("«");
+        previousYearButton.setOnAction(event -> {
+            currentMonth = currentMonth.minusYears(1);
+            ensureAvailabilityLoaded();
             refreshMonths();
         });
 
-        Button nextButton = createNavigationButton(">");
+        Button previousButton = createNavigationButton("‹");
+        previousButton.setOnAction(event -> {
+            currentMonth = currentMonth.minusMonths(1);
+            ensureAvailabilityLoaded();
+            refreshMonths();
+        });
+
+        Button nextButton = createNavigationButton("›");
         nextButton.setOnAction(event -> {
             currentMonth = currentMonth.plusMonths(1);
+            ensureAvailabilityLoaded();
+            refreshMonths();
+        });
+
+        Button nextYearButton = createNavigationButton("»");
+        nextYearButton.setOnAction(event -> {
+            currentMonth = currentMonth.plusYears(1);
+            ensureAvailabilityLoaded();
+            refreshMonths();
+        });
+
+        Button todayButton = createNavigationButton("Aujourd'hui");
+        todayButton.setFont(Font.font("Segoe UI", FontWeight.BOLD, 12));
+        todayButton.setMinSize(90, 36);
+        todayButton.setPrefSize(90, 36);
+        todayButton.setStyle("-fx-background-color: #0f69ff; -fx-text-fill: white; "
+                + "-fx-background-radius: 10; -fx-cursor: hand; -fx-font-weight: 700;");
+        todayButton.setOnAction(event -> {
+            currentMonth = YearMonth.now();
+            ensureAvailabilityLoaded();
             refreshMonths();
         });
 
         firstMonthTitle = createMonthTitleLabel();
         secondMonthTitle = createMonthTitleLabel();
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
         HBox monthTitles = new HBox(48, firstMonthTitle, secondMonthTitle);
         monthTitles.setAlignment(Pos.CENTER);
+        HBox.setHgrow(monthTitles, Priority.ALWAYS);
 
-        HBox header = new HBox(16, previousButton, monthTitles, spacer, nextButton);
+        HBox header = new HBox(8,
+                previousYearButton, previousButton,
+                monthTitles,
+                todayButton,
+                nextButton, nextYearButton);
         header.getStyleClass().add("dual-calendar-header");
         header.setAlignment(Pos.CENTER_LEFT);
         return header;
@@ -131,8 +163,9 @@ public class DualMonthCalendarView extends VBox {
 
     private HBox createLegend() {
         HBox legend = new HBox(28,
-                createLegendItem("#f4bc42", "Peu d'options disponibles"),
-                createLegendItem("#55d1b4", "La plupart des options sont disponibles"));
+                createLegendItem("#22c55e", "Disponible"),
+                createLegendItem("#f59e0b", "Peu de places"),
+                createLegendItem("#ef4444", "Complet"));
         legend.getStyleClass().add("dual-calendar-legend");
         legend.setAlignment(Pos.CENTER_LEFT);
         return legend;
@@ -238,24 +271,88 @@ public class DualMonthCalendarView extends VBox {
     }
 
     private void applyAvailabilityStyle(Button button, Region availabilityBar, LocalDate date) {
-        int availability = availabilityMap.getOrDefault(date, 1);
+        int availability = availabilityMap.getOrDefault(date, -1);
         button.getProperties().put("calendarDate", date);
         button.getProperties().put("availability", availability);
 
+        if (availability == -1) {
+            // Pas d'événement — neutre, barre invisible
+            availabilityBar.setOpacity(0);
+            button.setStyle(
+                "-fx-background-color: white;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-color: transparent;" +
+                "-fx-border-radius: 12;");
+            if (button.getGraphic() instanceof VBox vbox) {
+                for (var node : vbox.getChildren()) {
+                    if (node instanceof Label lbl) {
+                        lbl.setStyle("-fx-text-fill: #243b6c; -fx-font-weight: 700; -fx-font-size: 15;");
+                    }
+                }
+            }
+            return;
+        }
+
         if (availability == 2) {
-            availabilityBar.setStyle("-fx-background-color: #d0d7e5; -fx-background-radius: 99;");
+            // 🔴 Complet
+            availabilityBar.setOpacity(1);
+            availabilityBar.setStyle("-fx-background-color: #ef4444; -fx-background-radius: 99;");
+            button.setStyle(
+                "-fx-background-color: #fff1f1;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-color: #fecaca;" +
+                "-fx-border-radius: 12;" +
+                "-fx-border-width: 1;" +
+                "-fx-cursor: default;");
+            if (button.getGraphic() instanceof VBox vbox) {
+                for (var node : vbox.getChildren()) {
+                    if (node instanceof Label lbl) {
+                        lbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: 700; -fx-font-size: 15;");
+                    }
+                }
+            }
+            button.setOnAction(null);
             button.getStyleClass().add("is-full");
-            button.setDisable(true);
             return;
         }
 
         if (availability == 0) {
-            availabilityBar.setStyle("-fx-background-color: #f4bc42; -fx-background-radius: 99;");
+            // 🟡 Peu de places
+            availabilityBar.setOpacity(1);
+            availabilityBar.setStyle("-fx-background-color: #f59e0b; -fx-background-radius: 99;");
+            button.setStyle(
+                "-fx-background-color: #fffbeb;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-color: #fde68a;" +
+                "-fx-border-radius: 12;" +
+                "-fx-border-width: 1;");
+            if (button.getGraphic() instanceof VBox vbox) {
+                for (var node : vbox.getChildren()) {
+                    if (node instanceof Label lbl) {
+                        lbl.setStyle("-fx-text-fill: #92400e; -fx-font-weight: 700; -fx-font-size: 15;");
+                    }
+                }
+            }
             button.getStyleClass().add("is-limited");
             return;
         }
 
-        availabilityBar.setStyle("-fx-background-color: #55d1b4; -fx-background-radius: 99;");
+        // 🟢 Disponible
+        availabilityBar.setOpacity(1);
+        availabilityBar.setStyle("-fx-background-color: #22c55e; -fx-background-radius: 99;");
+        button.setStyle(
+            "-fx-background-color: #f0fdf4;" +
+            "-fx-background-radius: 12;" +
+            "-fx-border-color: #bbf7d0;" +
+            "-fx-border-radius: 12;" +
+            "-fx-border-width: 1;");
+        if (button.getGraphic() instanceof VBox vbox) {
+            for (var node : vbox.getChildren()) {
+                if (node instanceof Label lbl) {
+                    lbl.setStyle("-fx-text-fill: #166534; -fx-font-weight: 700; -fx-font-size: 15;");
+                }
+            }
+        }
         button.getStyleClass().add("is-available");
     }
 
@@ -288,10 +385,24 @@ public class DualMonthCalendarView extends VBox {
 
     private void loadAvailabilityData() {
         availabilityMap.clear();
+        loadedMonths.clear();
+        allEventsCache = null;
         try {
             List<Event> allEvents = eventService.getAllEvents();
-            for (int monthOffset = -1; monthOffset <= 2; monthOffset++) {
-                YearMonth month = currentMonth.plusMonths(monthOffset);
+            allEventsCache = allEvents;
+
+            // Compute for every date that has an event
+            for (Event event : allEvents) {
+                LocalDate d = event.getDateEvent().toLocalDate();
+                loadedMonths.add(YearMonth.from(d));
+            }
+            // Also pre-load the currently visible months
+            for (int offset = 0; offset <= 1; offset++) {
+                loadedMonths.add(currentMonth.plusMonths(offset));
+            }
+
+            // Compute availability for all loaded months
+            for (YearMonth month : loadedMonths) {
                 for (LocalDate date = month.atDay(1); !date.isAfter(month.atEndOfMonth()); date = date.plusDays(1)) {
                     availabilityMap.put(date, computeAvailabilityForDate(allEvents, date));
                 }
@@ -302,42 +413,91 @@ public class DualMonthCalendarView extends VBox {
         refreshMonths();
     }
 
+    /**
+     * Ensures the currently visible months have availability data loaded.
+     * Called when navigating to avoid blank months.
+     */
+    private void ensureAvailabilityLoaded() {
+        if (!hasDataServices()) return;
+        boolean needsLoad = false;
+        for (int offset = 0; offset <= 1; offset++) {
+            YearMonth m = currentMonth.plusMonths(offset);
+            if (!loadedMonths.contains(m)) {
+                needsLoad = true;
+                break;
+            }
+        }
+        if (needsLoad) {
+            try {
+                List<Event> events = allEventsCache != null ? allEventsCache : eventService.getAllEvents();
+                if (allEventsCache == null) allEventsCache = events;
+                for (int offset = 0; offset <= 1; offset++) {
+                    YearMonth m = currentMonth.plusMonths(offset);
+                    if (!loadedMonths.contains(m)) {
+                        for (LocalDate d = m.atDay(1); !d.isAfter(m.atEndOfMonth()); d = d.plusDays(1)) {
+                            availabilityMap.put(d, computeAvailabilityForDate(events, d));
+                        }
+                        loadedMonths.add(m);
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("Erreur chargement disponibilités: " + ex.getMessage());
+            }
+        }
+    }
+
     private int computeAvailabilityForDate(List<Event> events, LocalDate date) {
-        int totalCapacity = 0;
-        int totalReserved = 0;
         boolean hasEvent = false;
+        boolean allFull = true;
+        boolean hasLimited = false;
 
         for (Event event : events) {
-            if (!event.getDateEvent().toLocalDate().equals(date)) {
-                continue;
-            }
+            if (!event.getDateEvent().toLocalDate().equals(date)) continue;
+
+            int capacity = event.getCapacite();
+            if (capacity <= 0) continue;
+
             hasEvent = true;
-            totalCapacity += event.getCapacite();
+            int reserved = 0;
             try {
-                totalReserved += reservationService.getReservationCountByEvent(event.getId());
-            } catch (Exception ignored) {
-                // On garde une valeur conservative si le comptage echoue.
+                reserved = reservationService.getConfirmedCountByEvent(event.getId());
+            } catch (Exception ignored) {}
+
+            int remaining = capacity - reserved;
+
+            if (remaining <= 0) {
+                // complet — ne pas changer allFull
+            } else {
+                allFull = false;
+                double ratio = (double) remaining / capacity;
+                // Orange si moins de 75% des places restantes (au moins 1 réservation)
+                if (ratio < 0.75) hasLimited = true;
             }
         }
 
-        if (!hasEvent || totalCapacity <= 0) {
-            return 1;
-        }
-
-        int remaining = totalCapacity - totalReserved;
-        if (remaining <= 0) {
-            return 2;
-        }
-        double ratio = (double) remaining / totalCapacity;
-        return ratio < 0.25 ? 0 : 1;
+        if (!hasEvent) return -1;         // pas d'événement → neutre (gris)
+        if (allFull)   return 2;          // complet → rouge
+        if (hasLimited) return 0;         // peu de places → orange
+        return 1;                         // disponible → vert
     }
 
     public void setDateAvailabilities(Map<LocalDate, Integer> availabilities) {
         availabilityMap.clear();
+        loadedMonths.clear();
+        allEventsCache = null;
         if (availabilities != null) {
             availabilityMap.putAll(availabilities);
         }
         refreshMonths();
+    }
+
+    /**
+     * Force a full reload from the database — call this after reservations change.
+     */
+    public void reloadFromDatabase() {
+        if (hasDataServices()) {
+            loadAvailabilityData();
+        }
     }
 
     public void setDateAvailability(LocalDate date, int availability) {

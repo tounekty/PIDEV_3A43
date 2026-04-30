@@ -51,6 +51,7 @@ public class EventService {
             ensureColumnExists(statement, "location", "ALTER TABLE event ADD COLUMN location VARCHAR(255) NOT NULL DEFAULT '' AFTER event_date");
             ensureColumnExists(statement, "status", "ALTER TABLE event ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' AFTER location");
             ensureColumnExists(statement, "duration_minutes", "ALTER TABLE event ADD COLUMN duration_minutes INT NOT NULL DEFAULT 60 AFTER status");
+            ensureColumnExists(statement, "overbooking_percentage", "ALTER TABLE event ADD COLUMN overbooking_percentage DOUBLE NOT NULL DEFAULT 10.0 AFTER duration_minutes");
         }
     }
 
@@ -60,8 +61,8 @@ public class EventService {
 
         String sql = """
                 INSERT INTO event(id_user, titre, description, date_event, lieu, capacite, categorie, image,
-                                  title, event_date, location, status, duration_minutes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  title, event_date, location, status, duration_minutes, overbooking_percentage)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -85,6 +86,7 @@ public class EventService {
             preparedStatement.setString(11, event.getLocation());
             preparedStatement.setString(12, normalizeStatus(event.getStatus()));
             preparedStatement.setInt(13, normalizeDuration(event.getDurationMinutes()));
+            preparedStatement.setDouble(14, Math.max(0, event.getOverbookingPercentage()));
             preparedStatement.executeUpdate();
 
             try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
@@ -319,14 +321,18 @@ public class EventService {
     }
 
     public List<Event> getFullEvents() throws SQLException {
+        // Tient compte du surbooking : un événement est plein quand
+        // les réservations confirmées >= capacite * (1 + overbooking_percentage/100)
         String sql = """
                 SELECT e.id, e.id_user, e.titre, e.description, e.date_event, e.lieu, e.capacite,
                        e.categorie, e.image, e.title, e.event_date, e.location, e.status, e.duration_minutes
                 FROM event e
-                LEFT JOIN reservation_event r ON r.event_id = e.id
+                LEFT JOIN reservation_event r
+                       ON r.event_id = e.id AND r.status = 'CONFIRMED'
                 GROUP BY e.id, e.id_user, e.titre, e.description, e.date_event, e.lieu, e.capacite,
-                         e.categorie, e.image, e.title, e.event_date, e.location, e.status, e.duration_minutes
-                HAVING COUNT(r.id) >= e.capacite
+                         e.categorie, e.image, e.title, e.event_date, e.location, e.status,
+                         e.duration_minutes, e.overbooking_percentage
+                HAVING COUNT(r.id) >= CEIL(e.capacite * (1 + COALESCE(e.overbooking_percentage, 0) / 100.0))
                 ORDER BY e.date_event ASC
                 """;
         List<Event> events = new ArrayList<>();
@@ -357,7 +363,8 @@ public class EventService {
         String sql = """
                 UPDATE event
                 SET id_user = ?, titre = ?, description = ?, date_event = ?, lieu = ?, capacite = ?,
-                    categorie = ?, image = ?, title = ?, event_date = ?, location = ?, status = ?, duration_minutes = ?
+                    categorie = ?, image = ?, title = ?, event_date = ?, location = ?, status = ?,
+                    duration_minutes = ?, overbooking_percentage = ?
                 WHERE id = ?
                 """;
 
@@ -382,7 +389,8 @@ public class EventService {
             preparedStatement.setString(11, event.getLocation());
             preparedStatement.setString(12, normalizeStatus(event.getStatus()));
             preparedStatement.setInt(13, normalizeDuration(event.getDurationMinutes()));
-            preparedStatement.setInt(14, event.getId());
+            preparedStatement.setDouble(14, Math.max(0, event.getOverbookingPercentage()));
+            preparedStatement.setInt(15, event.getId());
             preparedStatement.executeUpdate();
         }
     }
@@ -402,7 +410,7 @@ public class EventService {
         Timestamp dateEventTimestamp = resultSet.getTimestamp("date_event");
         Timestamp eventDateTimestamp = resultSet.getTimestamp("event_date");
 
-        return new Event(
+        Event event = new Event(
                 resultSet.getInt("id"),
                 idUser,
                 resultSet.getString("titre"),
@@ -418,6 +426,15 @@ public class EventService {
                 resultSet.getString("status"),
                 resultSet.getInt("duration_minutes")
         );
+        
+        // Ajouter overbooking_percentage (avec gestion d'erreur au cas où la colonne n'existe pas)
+        try {
+            event.setOverbookingPercentage(resultSet.getDouble("overbooking_percentage"));
+        } catch (SQLException e) {
+            event.setOverbookingPercentage(0); // Valeur par défaut
+        }
+        
+        return event;
     }
 
     private List<Event> getEventsByDateBoundary(boolean upcoming) throws SQLException {
