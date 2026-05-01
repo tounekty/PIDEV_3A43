@@ -18,6 +18,7 @@ import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
 import org.example.auth.AppUser;
 import org.example.auth.AuthService;
+import org.example.model.User;
 import org.example.controller.ResourceCatalogController;
 import org.example.controller.ResourceListController;
 import org.example.event.Event;
@@ -85,6 +86,7 @@ public class Main extends Application {
     private Button addHeaderButton;
     private Button eventsHeaderButton;
     private Button reservationsHeaderButton;
+    private Button forumHeaderButton;
     private Button statsHeaderButton;
     private Button resourcesHeaderButton;
     private Button logoutButton;
@@ -133,13 +135,14 @@ public class Main extends Application {
         addHeaderButton = button("Ajouter", PRIMARY, e -> showPage(formPage));
         eventsHeaderButton = button("Evenements", SECONDARY, e -> { loadEvents(); showPage(eventsPage); });
         reservationsHeaderButton = button("Reservations", SECONDARY, e -> { loadReservations(); showPage(reservationsPage); });
+        forumHeaderButton = button("Forum", SECONDARY, e -> openForumWindow());
         statsHeaderButton = button("Statistiques", SECONDARY, e -> { try { statsPage = buildStatsPageGlobal(); showPage(statsPage); } catch (SQLException ex) { showError("Erreur", ex.getMessage()); } });
         resourcesHeaderButton = button("📚 Ressources", SECONDARY, e -> openResourcesWindow());
         logoutButton = button("Deconnexion", SECONDARY, e -> logout());
         userBadge = new Label();
         userBadge.setStyle("-fx-text-fill:#0f69ff; -fx-background-color:rgba(15,105,255,0.10); -fx-background-radius:999; -fx-padding:8 12 8 12; -fx-font-size:12px; -fx-font-weight:800;");
         Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox actions = new HBox(12, spacer, userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, statsHeaderButton, resourcesHeaderButton, logoutButton);
+        HBox actions = new HBox(12, spacer, userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, forumHeaderButton, statsHeaderButton, resourcesHeaderButton, logoutButton);
         actions.setAlignment(Pos.CENTER_RIGHT);
         VBox box = new VBox(18, new VBox(6, t1, t2, t3), actions);
         box.setPadding(new Insets(0, 0, 18, 0));
@@ -317,6 +320,7 @@ public class Main extends Application {
         eventsHeaderButton.setVisible(true); eventsHeaderButton.setManaged(true);
         addHeaderButton.setVisible(admin); addHeaderButton.setManaged(admin);
         reservationsHeaderButton.setVisible(admin); reservationsHeaderButton.setManaged(admin);
+        forumHeaderButton.setVisible(true); forumHeaderButton.setManaged(true);
         statsHeaderButton.setVisible(admin); statsHeaderButton.setManaged(admin);
         resourcesHeaderButton.setVisible(true); resourcesHeaderButton.setManaged(true);
         eventsTitle.setText(admin ? "Back office des evenements" : "Catalogue des evenements");
@@ -324,7 +328,7 @@ public class Main extends Application {
     }
 
     private void showLoginPage() {
-        for (Node n : List.of(userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, statsHeaderButton, resourcesHeaderButton, logoutButton)) { n.setVisible(false); n.setManaged(false); }
+        for (Node n : List.of(userBadge, addHeaderButton, eventsHeaderButton, reservationsHeaderButton, forumHeaderButton, statsHeaderButton, resourcesHeaderButton, logoutButton)) { n.setVisible(false); n.setManaged(false); }
         showPage(loginPage);
     }
 
@@ -690,13 +694,13 @@ public class Main extends Application {
                 ResourceListController controller = loader.getController();
                 controller.setAdminMode(true);
                 if (currentUser != null) {
-                    controller.setCurrentUserId(currentUser.getId());
+                    controller.setCurrentUser(profileUserFromAppUser(currentUser));
                 }
             } else {
                 ResourceCatalogController controller = loader.getController();
                 controller.setAdminMode(false);
                 if (currentUser != null) {
-                    controller.setCurrentUserId(currentUser.getId());
+                    controller.setCurrentUser(profileUserFromAppUser(currentUser));
                 }
             }
             stage.show();
@@ -707,6 +711,44 @@ public class Main extends Application {
                 root = root.getCause();
             }
             showError("Erreur", "Impossible d'ouvrir la fenêtre Ressources:\n" + root.getClass().getSimpleName() + ": " + root.getMessage());
+        }
+    }
+
+    /**
+     * L'entrée legacy {@link Main} utilise {@link AppUser} (sans email en base).
+     * On construit un {@link User} minimal pour les commentaires (nom = login, email technique valide).
+     */
+    private static User profileUserFromAppUser(AppUser appUser) {
+        if (appUser == null) {
+            return null;
+        }
+        String username = appUser.getUsername() != null ? appUser.getUsername().trim() : "user";
+        String localPart = username.replaceAll("[^A-Za-z0-9_.-]", "");
+        if (localPart.isEmpty()) {
+            localPart = "user";
+        }
+        String email = localPart + "@app-user.local";
+        String raw = appUser.getRole() != null ? appUser.getRole().trim().toUpperCase(Locale.ROOT) : "CLIENT";
+        String role = switch (raw) {
+            case "ADMIN" -> "ADMIN";
+            case "ETUDIANT" -> "ETUDIANT";
+            case "PSYCHOLOGUE" -> "PSYCHOLOGUE";
+            case "CLIENT" -> "CLIENT";
+            default -> "CLIENT";
+        };
+        return new User(appUser.getId(), username, email, role);
+    }
+
+    private void openForumWindow() {
+        try {
+            org.example.view.Main forumApp = new org.example.view.Main();
+            forumApp.start(new Stage());
+        } catch (Exception e) {
+            Throwable root = e;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            showError("Erreur", "Impossible d'ouvrir la fenêtre Forum:\n" + root.getClass().getSimpleName() + ": " + root.getMessage());
         }
     }
 

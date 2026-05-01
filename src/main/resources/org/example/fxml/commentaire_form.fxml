@@ -9,13 +9,9 @@
                 <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
     
-    <!-- Nom de l'auteur -->
-    <Label text="Nom" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-    <TextField fx:id="authorNameField" promptText="Votre nom (2-100 caractères)"/>
-    
-    <!-- Email de l'auteur -->
-    <Label text="Email" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-    <TextField fx:id="authorEmailField" promptText="votre.email@example.com"/>
+    <!-- Compte connecté (nom et email du profil) -->
+    <Label text="Publication en tant que" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+    <Label fx:id="connectedUserLabel" wrapText="true" style="-fx-text-fill: #29496f; -fx-font-size: 13;"/>
     
     <!-- Contenu du commentaire -->
     <Label text="Commentaire" style="-fx-font-weight: bold; -fx-font-size: 12;"/>

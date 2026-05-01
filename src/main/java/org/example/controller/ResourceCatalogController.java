@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.example.model.Resource;
+import org.example.model.User;
 import org.example.service.ResourceService;
 
 import javafx.collections.FXCollections;
@@ -46,6 +47,7 @@ public class ResourceCatalogController {
 
     private final ResourceService resourceService = new ResourceService();
     private ObservableList<Resource> resourceList = FXCollections.observableArrayList();
+    private User currentUser;
     private int currentUserId = 1;
     private boolean adminMode = false;
     private static final int COLUMNS = 4;
@@ -75,6 +77,13 @@ public class ResourceCatalogController {
 
     public void setCurrentUserId(int currentUserId) {
         this.currentUserId = currentUserId;
+    }
+
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        if (user != null) {
+            this.currentUserId = user.getId();
+        }
     }
 
     public void setAdminMode(boolean adminMode) {
@@ -192,6 +201,7 @@ public class ResourceCatalogController {
 
             ResourceDetailController controller = loader.getController();
             controller.setAdminMode(adminMode);
+            controller.setCurrentUser(currentUser);
             controller.setCurrentUserId(currentUserId);
             controller.setResource(resource);
 

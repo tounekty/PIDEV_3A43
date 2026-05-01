@@ -18,6 +18,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.example.model.Commentaire;
 import org.example.model.Resource;
+import org.example.model.User;
 import org.example.service.CommentaireService;
 import org.example.service.ResourceService;
 
@@ -59,6 +60,7 @@ public class ResourceListController {
     private final ResourceService resourceService = new ResourceService();
     private final CommentaireService commentaireService = new CommentaireService();
     private final ObservableList<Resource> resourceList = FXCollections.observableArrayList();
+    private User currentUser;
     private int currentUserId = 1;
     private boolean adminMode = true;
 
@@ -66,6 +68,13 @@ public class ResourceListController {
 
     public void setCurrentUserId(int currentUserId) {
         this.currentUserId = currentUserId;
+    }
+
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        if (user != null) {
+            this.currentUserId = user.getId();
+        }
     }
 
     public void setAdminMode(boolean adminMode) {
@@ -471,9 +480,10 @@ public class ResourceListController {
             stage.setResizable(true);
 
             ResourceDetailController controller = loader.getController();
-            controller.setResource(resource);
             controller.setAdminMode(adminMode);
+            controller.setCurrentUser(currentUser);
             controller.setCurrentUserId(currentUserId);
+            controller.setResource(resource);
 
             stage.show();
         } catch (IOException e) {

@@ -73,16 +73,16 @@ public class CommentaireService {
         return commentaireDAO.findUnapproved();
     }
     
-    public void addLike(int commentId) throws SQLException {
-        commentaireDAO.addLike(commentId);
+    public Commentaire addLike(int commentId, int userId) throws SQLException {
+        return commentaireDAO.addLike(commentId, userId);
     }
     
     public void removeLike(int commentId) throws SQLException {
         commentaireDAO.removeLike(commentId);
     }
     
-    public void addDislike(int commentId) throws SQLException {
-        commentaireDAO.addDislike(commentId);
+    public Commentaire addDislike(int commentId, int userId) throws SQLException {
+        return commentaireDAO.addDislike(commentId, userId);
     }
     
     public void removeDislike(int commentId) throws SQLException {

@@ -1,7 +1,8 @@
 package org.example.controller;
 
-import org.example.model.Resource;
 import org.example.model.Commentaire;
+import org.example.model.Resource;
+import org.example.model.User;
 import org.example.service.CommentaireService;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -10,8 +11,7 @@ import javafx.stage.Stage;
 import java.sql.SQLException;
 
 public class CommentaireFormController {
-    @FXML private TextField authorNameField;
-    @FXML private TextField authorEmailField;
+    @FXML private Label connectedUserLabel;
     @FXML private TextArea contentArea;
     @FXML private Button star1Btn;
     @FXML private Button star2Btn;
@@ -24,12 +24,14 @@ public class CommentaireFormController {
     private CommentaireService commentaireService = new CommentaireService();
     private Resource resource;
     private Runnable onCommentaireSaved;
+    private User connectedUser;
     private int currentUserId = 1;
     private int selectedRating = 5;
     
     @FXML
     public void initialize() {
         updateStars();
+        refreshConnectedUserLabel();
     }
     
     public void setResource(Resource resource) {
@@ -42,6 +44,30 @@ public class CommentaireFormController {
 
     public void setCurrentUserId(int currentUserId) {
         this.currentUserId = currentUserId;
+    }
+
+    /**
+     * Définit le compte à partir duquel le commentaire est publié (nom et email du profil).
+     */
+    public void setConnectedUser(User user) {
+        this.connectedUser = user;
+        if (user != null) {
+            this.currentUserId = user.getId();
+        }
+        refreshConnectedUserLabel();
+    }
+
+    private void refreshConnectedUserLabel() {
+        if (connectedUserLabel == null) {
+            return;
+        }
+        if (connectedUser == null) {
+            connectedUserLabel.setText("— (connectez-vous pour commenter)");
+            return;
+        }
+        String name = connectedUser.getFullName() != null ? connectedUser.getFullName().trim() : "";
+        String email = connectedUser.getEmail() != null ? connectedUser.getEmail().trim() : "";
+        connectedUserLabel.setText(name + "\n" + email);
     }
 
     @FXML
@@ -88,17 +114,20 @@ public class CommentaireFormController {
     @FXML
     private void handleSave() {
         try {
-            String authorName = fieldText(authorNameField);
-            String authorEmail = fieldText(authorEmailField);
+            if (connectedUser == null) {
+                showWarning("Vous devez être connecté pour publier un commentaire.");
+                return;
+            }
+            String authorName = authorDisplayName(connectedUser);
+            String authorEmail = connectedUser.getEmail() != null ? connectedUser.getEmail().trim() : "";
             String content = fieldText(contentArea);
 
-            // Validation basique
             if (authorName.isEmpty()) {
-                showWarning("Le nom est obligatoire");
+                showWarning("Profil incomplet : impossible de déterminer votre nom d'affichage.");
                 return;
             }
             if (authorEmail.isEmpty()) {
-                showWarning("L'email est obligatoire");
+                showWarning("Profil incomplet : email manquant sur le compte.");
                 return;
             }
             if (content.isEmpty()) {
@@ -160,5 +189,21 @@ public class CommentaireFormController {
             return "";
         }
         return field.getText().trim();
+    }
+
+    /** Nom enregistré avec le commentaire : cohérent avec la validation service (2–100 caractères). */
+    private static String authorDisplayName(User user) {
+        String full = user.getFullName() != null ? user.getFullName().trim() : "";
+        if (full.length() > 100) {
+            return full.substring(0, 100);
+        }
+        if (full.length() >= 2) {
+            return full;
+        }
+        String username = user.getUsername() != null ? user.getUsername().trim() : "";
+        if (username.length() > 100) {
+            return username.substring(0, 100);
+        }
+        return username;
     }
 }

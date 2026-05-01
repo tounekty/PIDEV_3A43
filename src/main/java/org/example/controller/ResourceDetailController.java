@@ -15,6 +15,7 @@ import java.util.Locale;
 
 import org.example.model.Commentaire;
 import org.example.model.Resource;
+import org.example.model.User;
 import org.example.service.CommentaireService;
 import org.example.service.GTTSTextToSpeechService;
 import org.example.service.ResourceService;
@@ -83,6 +84,7 @@ public class ResourceDetailController {
     private final List<Commentaire> allCommentaires = new ArrayList<>();
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private boolean adminMode = false;
+    private User currentUser;
     private int currentUserId = 1;
     private String currentVideoUrl;
     private MediaPlayer mediaPlayer;
@@ -141,6 +143,14 @@ public class ResourceDetailController {
     public void setCurrentUserId(int currentUserId) {
         this.currentUserId = currentUserId;
     }
+
+    /** Utilisateur connecté (profil utilisé pour les commentaires et droits). */
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        if (user != null) {
+            this.currentUserId = user.getId();
+        }
+    }
     
     private void loadResourceData() {
         titleLabel.setText(resource.getTitle());
@@ -198,7 +208,7 @@ public class ResourceDetailController {
         currentVideoUrl = videoUrl;
         if (videoUrl != null && !videoUrl.isBlank()) {
             videoWebView.getEngine().setJavaScriptEnabled(true);
-            videoWebView.getEngine().load(toWatchVideoUrl(videoUrl.trim()));
+            loadVideoPreview(videoUrl.trim());
             openVideoBtn.setDisable(false);
         } else {
             videoWebView.getEngine().loadContent("<html><body style='font-family:Arial;padding:12px;color:#5f6f86;'>Aucune vidéo disponible pour cette ressource.</body></html>");
@@ -296,6 +306,100 @@ public class ResourceDetailController {
             return "https://www.youtube.com/watch?v=" + id;
         }
         return url;
+    }
+
+    private void loadVideoPreview(String url) {
+        String id = extractYoutubeId(url);
+        if (id != null && !id.isBlank()) {
+            videoWebView.getEngine().loadContent(buildYoutubePreviewHtml(id, toWatchVideoUrl(url)));
+            return;
+        }
+        videoWebView.getEngine().loadContent(buildExternalVideoPreviewHtml(url));
+    }
+
+    private String buildYoutubePreviewHtml(String videoId, String watchUrl) {
+        String safeVideoId = htmlEscape(videoId);
+        String safeWatchUrl = htmlEscape(watchUrl);
+        String thumbnailUrl = "https://img.youtube.com/vi/" + safeVideoId + "/hqdefault.jpg";
+
+        return """
+                <!doctype html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        html, body { margin:0; height:100%%; font-family:Arial, sans-serif; background:#102033; color:white; }
+                        .preview { position:relative; height:100%%; min-height:300px; overflow:hidden; background:#102033; }
+                        .preview::before { content:""; position:absolute; inset:0; background:url('%s') center/cover no-repeat; opacity:.82; filter:brightness(.72); }
+                        .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px; background:linear-gradient(180deg, rgba(8,19,33,.18), rgba(8,19,33,.72)); }
+                        .play { width:74px; height:52px; border-radius:16px; background:#ff0033; display:flex; align-items:center; justify-content:center; box-shadow:0 12px 28px rgba(0,0,0,.25); }
+                        .tri { width:0; height:0; margin-left:5px; border-top:14px solid transparent; border-bottom:14px solid transparent; border-left:22px solid white; }
+                        h1 { margin:0; font-size:24px; line-height:1.2; font-weight:700; }
+                        p { margin:0; max-width:620px; color:#dce7f5; font-size:14px; line-height:1.45; }
+                        a { color:#ffffff; font-weight:700; text-decoration:underline; }
+                    </style>
+                </head>
+                <body>
+                    <div class="preview">
+                        <div class="overlay">
+                            <div class="play"><div class="tri"></div></div>
+                            <h1>Video YouTube</h1>
+                            <p>Le lecteur YouTube embarque peut etre bloque dans JavaFX. Utilisez le bouton <b>Ouvrir sur YouTube</b> au-dessus, ou ouvrez <a href="%s">la video</a>.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(thumbnailUrl, safeWatchUrl);
+    }
+
+    private String buildExternalVideoPreviewHtml(String videoUrl) {
+        String safeVideoUrl = htmlEscape(videoUrl);
+        return """
+                <!doctype html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        html, body { margin:0; height:100%%; font-family:Arial, sans-serif; background:#f5f9fd; color:#10233f; }
+                        .box { height:100%%; min-height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; padding:24px; box-sizing:border-box; }
+                        h1 { margin:0; font-size:22px; }
+                        p { margin:0; color:#5f6f86; line-height:1.45; }
+                        a { color:#0f5db8; font-weight:700; }
+                    </style>
+                </head>
+                <body>
+                    <div class="box">
+                        <h1>Video externe</h1>
+                        <p>Utilisez le bouton d'ouverture au-dessus pour consulter la video.</p>
+                        <a href="%s">%s</a>
+                    </div>
+                </body>
+                </html>
+                """.formatted(safeVideoUrl, safeVideoUrl);
+    }
+
+    private String buildVideoMessageHtml(String message) {
+        return """
+                <!doctype html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family:Arial,sans-serif;margin:0;height:100%%;display:flex;align-items:center;justify-content:center;color:#5f6f86;background:#f5f9fd;">
+                    <div>%s</div>
+                </body>
+                </html>
+                """.formatted(htmlEscape(message));
+    }
+
+    private String htmlEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     @FXML
@@ -527,6 +631,7 @@ public class ResourceDetailController {
             
             CommentaireFormController controller = loader.getController();
             controller.setResource(resource);
+            controller.setConnectedUser(currentUser);
             controller.setCurrentUserId(currentUserId);
             controller.setOnCommentaireSaved(() -> {
                 loadCommentaires();
@@ -727,6 +832,29 @@ public class ResourceDetailController {
         return "★".repeat(safe) + "☆".repeat(5 - safe);
     }
 
+    private int resolveCurrentVoterId() throws SQLException {
+        int voterUserId = currentUser != null ? currentUser.getId() : currentUserId;
+        if (voterUserId <= 0) {
+            throw new SQLException("Connexion requise pour voter.");
+        }
+        return voterUserId;
+    }
+
+    private void updateCommentVoteCounts(Commentaire target, Commentaire updated) {
+        if (target == null || updated == null) {
+            return;
+        }
+        target.setLikeCount(updated.getLikeCount());
+        target.setDislikeCount(updated.getDislikeCount());
+        for (Commentaire comment : allCommentaires) {
+            if (comment.getId() == target.getId()) {
+                comment.setLikeCount(updated.getLikeCount());
+                comment.setDislikeCount(updated.getDislikeCount());
+                break;
+            }
+        }
+    }
+
     private class CommentaireCardCell extends ListCell<Commentaire> {
         @Override
         protected void updateItem(Commentaire c, boolean empty) {
@@ -754,23 +882,27 @@ public class ResourceDetailController {
             Button likeBtn = new Button(" " + c.getLikeCount());
             likeBtn.setGraphic(UIAnimationService.createLikeIcon());
             likeBtn.setStyle("-fx-background-color: #f0f4f8; -fx-border-color: #d0dce8; -fx-padding: 6 10 6 10; -fx-background-radius: 8; -fx-font-size: 11px; -fx-cursor: hand;");
-            likeBtn.setOnAction(e -> {
-                try {
-                    commentaireService.addLike(c.getId());
-                    c.setLikeCount(c.getLikeCount() + 1);
-                    likeBtn.setText(" " + c.getLikeCount());
-                } catch (SQLException ex) {
-                    showError("Erreur like: " + ex.getMessage());
-                }
-            });
 
             Button dislikeBtn = new Button(" " + c.getDislikeCount());
             dislikeBtn.setGraphic(UIAnimationService.createDislikeIcon());
             dislikeBtn.setStyle("-fx-background-color: #f0f4f8; -fx-border-color: #d0dce8; -fx-padding: 6 10 6 10; -fx-background-radius: 8; -fx-font-size: 11px; -fx-cursor: hand;");
+            likeBtn.setOnAction(e -> {
+                try {
+                    int voterUserId = resolveCurrentVoterId();
+                    Commentaire updated = commentaireService.addLike(c.getId(), voterUserId);
+                    updateCommentVoteCounts(c, updated);
+                    likeBtn.setText(" " + c.getLikeCount());
+                    dislikeBtn.setText(" " + c.getDislikeCount());
+                } catch (SQLException ex) {
+                    showError("Erreur like: " + ex.getMessage());
+                }
+            });
             dislikeBtn.setOnAction(e -> {
                 try {
-                    commentaireService.addDislike(c.getId());
-                    c.setDislikeCount(c.getDislikeCount() + 1);
+                    int voterUserId = resolveCurrentVoterId();
+                    Commentaire updated = commentaireService.addDislike(c.getId(), voterUserId);
+                    updateCommentVoteCounts(c, updated);
+                    likeBtn.setText(" " + c.getLikeCount());
                     dislikeBtn.setText(" " + c.getDislikeCount());
                 } catch (SQLException ex) {
                     showError("Erreur dislike: " + ex.getMessage());

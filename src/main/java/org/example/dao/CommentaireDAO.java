@@ -15,11 +15,15 @@ import org.example.model.Commentaire;
 public class CommentaireDAO {
 
     private static final String TABLE = "commentaire";
+    private static final String VOTE_TABLE = "commentaire_vote";
+    private static final String VOTE_LIKE = "LIKE";
+    private static final String VOTE_DISLIKE = "DISLIKE";
 
     public CommentaireDAO() {
         // Vérifier et créer les colonnes likes/dislikes si nécessaire
         try {
             ensureLikeColumnsExist();
+            ensureVoteTableExists();
         } catch (SQLException e) {
             System.err.println("Avertissement: Impossible de vérifier les colonnes like/dislike: " + e.getMessage());
         }
@@ -39,6 +43,27 @@ public class CommentaireDAO {
                     System.out.println("Colonne 'dislike_count' créée");
                 }
             }
+        }
+    }
+
+    private void ensureVoteTableExists() throws SQLException {
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + VOTE_TABLE + " ("
+                            + "id INT PRIMARY KEY AUTO_INCREMENT, "
+                            + "id_commentaire INT NOT NULL, "
+                            + "id_user INT NOT NULL, "
+                            + "vote_type VARCHAR(10) NOT NULL, "
+                            + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                            + "updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+                            + "UNIQUE KEY uk_commentaire_vote_user (id_commentaire, id_user), "
+                            + "INDEX idx_commentaire_vote_commentaire (id_commentaire), "
+                            + "INDEX idx_commentaire_vote_user (id_user), "
+                            + "CONSTRAINT fk_commentaire_vote_commentaire "
+                            + "FOREIGN KEY (id_commentaire) REFERENCES commentaire(id) ON DELETE CASCADE"
+                            + ")"
+            );
         }
     }
 
@@ -151,20 +176,9 @@ public class CommentaireDAO {
     
     // READ - By ID
     public Commentaire findById(int id) throws SQLException {
-        String sql = "SELECT * FROM commentaire WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            String resourceColumn = resolveResourceColumn(conn);
-            String userColumn = resolveUserColumn(conn);
-            
-            stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapRowToCommentaire(rs, resourceColumn, userColumn);
-                }
-            }
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            return findById(conn, id);
         }
-        return null;
     }
     
     // UPDATE
@@ -224,14 +238,8 @@ public class CommentaireDAO {
     }
     
     // LIKE/DISLIKE management
-    public void addLike(int commentId) throws SQLException {
-        ensureLikeColumnsExist();
-        String sql = "UPDATE commentaire SET like_count = like_count + 1 WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, commentId);
-            stmt.executeUpdate();
-        }
+    public Commentaire addLike(int commentId, int userId) throws SQLException {
+        return applyVote(commentId, userId, VOTE_LIKE);
     }
 
     public void removeLike(int commentId) throws SQLException {
@@ -244,14 +252,8 @@ public class CommentaireDAO {
         }
     }
 
-    public void addDislike(int commentId) throws SQLException {
-        ensureLikeColumnsExist();
-        String sql = "UPDATE commentaire SET dislike_count = dislike_count + 1 WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, commentId);
-            stmt.executeUpdate();
-        }
+    public Commentaire addDislike(int commentId, int userId) throws SQLException {
+        return applyVote(commentId, userId, VOTE_DISLIKE);
     }
 
     public void removeDislike(int commentId) throws SQLException {
@@ -264,7 +266,109 @@ public class CommentaireDAO {
         }
     }
 
+    private Commentaire applyVote(int commentId, int userId, String voteType) throws SQLException {
+        if (userId <= 0) {
+            throw new SQLException("Utilisateur connecte invalide pour voter.");
+        }
+        if (!VOTE_LIKE.equals(voteType) && !VOTE_DISLIKE.equals(voteType)) {
+            throw new SQLException("Type de vote invalide.");
+        }
+
+        ensureLikeColumnsExist();
+        ensureVoteTableExists();
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            boolean oldAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                String previousVote = findUserVoteForUpdate(conn, commentId, userId);
+                if (previousVote == null) {
+                    insertVote(conn, commentId, userId, voteType);
+                    incrementVoteCounter(conn, commentId, voteType);
+                } else if (!previousVote.equals(voteType)) {
+                    updateVote(conn, commentId, userId, voteType);
+                    decrementVoteCounter(conn, commentId, previousVote);
+                    incrementVoteCounter(conn, commentId, voteType);
+                }
+
+                Commentaire updated = findById(conn, commentId);
+                conn.commit();
+                return updated;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(oldAutoCommit);
+            }
+        }
+    }
+
+    private String findUserVoteForUpdate(Connection conn, int commentId, int userId) throws SQLException {
+        String sql = "SELECT vote_type FROM " + VOTE_TABLE + " WHERE id_commentaire = ? AND id_user = ? FOR UPDATE";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, commentId);
+            stmt.setInt(2, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getString("vote_type") : null;
+            }
+        }
+    }
+
+    private void insertVote(Connection conn, int commentId, int userId, String voteType) throws SQLException {
+        String sql = "INSERT INTO " + VOTE_TABLE + " (id_commentaire, id_user, vote_type) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, commentId);
+            stmt.setInt(2, userId);
+            stmt.setString(3, voteType);
+            stmt.executeUpdate();
+        }
+    }
+
+    private void updateVote(Connection conn, int commentId, int userId, String voteType) throws SQLException {
+        String sql = "UPDATE " + VOTE_TABLE + " SET vote_type = ? WHERE id_commentaire = ? AND id_user = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, voteType);
+            stmt.setInt(2, commentId);
+            stmt.setInt(3, userId);
+            stmt.executeUpdate();
+        }
+    }
+
+    private void incrementVoteCounter(Connection conn, int commentId, String voteType) throws SQLException {
+        String column = VOTE_LIKE.equals(voteType) ? "like_count" : "dislike_count";
+        String sql = "UPDATE commentaire SET " + column + " = " + column + " + 1 WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, commentId);
+            stmt.executeUpdate();
+        }
+    }
+
+    private void decrementVoteCounter(Connection conn, int commentId, String voteType) throws SQLException {
+        String column = VOTE_LIKE.equals(voteType) ? "like_count" : "dislike_count";
+        String sql = "UPDATE commentaire SET " + column + " = GREATEST(" + column + " - 1, 0) WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, commentId);
+            stmt.executeUpdate();
+        }
+    }
+
     // Helper
+    private Commentaire findById(Connection conn, int id) throws SQLException {
+        String sql = "SELECT * FROM commentaire WHERE id = ?";
+        String resourceColumn = resolveResourceColumn(conn);
+        String userColumn = resolveUserColumn(conn);
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapRowToCommentaire(rs, resourceColumn, userColumn);
+                }
+            }
+        }
+        return null;
+    }
+
     private Commentaire mapRowToCommentaire(ResultSet rs, String resourceColumn, String userColumn) throws SQLException {
         Commentaire commentaire = new Commentaire();
         commentaire.setId(rs.getInt("id"));
