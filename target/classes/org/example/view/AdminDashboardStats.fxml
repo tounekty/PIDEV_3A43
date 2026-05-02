@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import java.net.URL?>
+
+<VBox xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" spacing="24" style="-fx-background-color: #f8fafc; -fx-padding: 32px;">
+    <stylesheets>
+        <URL value="@mindcare-theme.css" />
+    </stylesheets>
+
+    <children>
+        <HBox alignment="CENTER_LEFT" spacing="20">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="Admin Analytics" style="-fx-font-size: 32px; -fx-font-weight: 900; -fx-text-fill: #1e293b; -fx-letter-spacing: -0.5px;" />
+                <Label text="Real-time insights and user distribution metrics." style="-fx-font-size: 15px; -fx-text-fill: #64748b;" />
+            </VBox>
+            <Button fx:id="adminStatsRefreshButton" text="Refresh Data" styleClass="btn-primary" style="-fx-background-radius: 12; -fx-padding: 12 24;" />
+        </HBox>
+
+        <GridPane hgap="20" vgap="20">
+            <children>
+                <!-- Stat Card: Total Users -->
+                <VBox spacing="10" style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" GridPane.rowIndex="0" GridPane.columnIndex="0" GridPane.hgrow="ALWAYS">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <StackPane style="-fx-background-color: #eff6ff; -fx-background-radius: 12; -fx-min-width: 44; -fx-min-height: 44;">
+                                <Label text="👥" style="-fx-font-size: 20px;" />
+                            </StackPane>
+                            <Label text="Total Users" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 700;" />
+                        </HBox>
+                        <Label fx:id="adminStatsTotalUsersValue" text="0" style="-fx-text-fill: #1e293b; -fx-font-size: 32px; -fx-font-weight: 900;" />
+                        <Label text="+12% from last month" style="-fx-text-fill: #10b981; -fx-font-size: 12px; -fx-font-weight: 600;" />
+                    </children>
+                </VBox>
+
+                <!-- Stat Card: Admins -->
+                <VBox spacing="10" style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <StackPane style="-fx-background-color: #fef2f2; -fx-background-radius: 12; -fx-min-width: 44; -fx-min-height: 44;">
+                                <Label text="🛡️" style="-fx-font-size: 20px;" />
+                            </StackPane>
+                            <Label text="Admins" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 700;" />
+                        </HBox>
+                        <Label fx:id="adminStatsAdminsValue" text="0" style="-fx-text-fill: #1e293b; -fx-font-size: 32px; -fx-font-weight: 900;" />
+                        <Label text="System managers" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
+                    </children>
+                </VBox>
+
+                <!-- Stat Card: Psychologues -->
+                <VBox spacing="10" style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" GridPane.rowIndex="0" GridPane.columnIndex="2" GridPane.hgrow="ALWAYS">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <StackPane style="-fx-background-color: #f0fdf4; -fx-background-radius: 12; -fx-min-width: 44; -fx-min-height: 44;">
+                                <Label text="🧠" style="-fx-font-size: 20px;" />
+                            </StackPane>
+                            <Label text="Psychologists" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 700;" />
+                        </HBox>
+                        <Label fx:id="adminStatsPsychologuesValue" text="0" style="-fx-text-fill: #1e293b; -fx-font-size: 32px; -fx-font-weight: 900;" />
+                        <Label text="Medical staff" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
+                    </children>
+                </VBox>
+
+                <!-- Stat Card: Banned -->
+                <VBox spacing="10" style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" GridPane.rowIndex="0" GridPane.columnIndex="3" GridPane.hgrow="ALWAYS">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <StackPane style="-fx-background-color: #fff7ed; -fx-background-radius: 12; -fx-min-width: 44; -fx-min-height: 44;">
+                                <Label text="🚫" style="-fx-font-size: 20px;" />
+                            </StackPane>
+                            <Label text="Banned" style="-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-font-weight: 700;" />
+                        </HBox>
+                        <Label fx:id="adminStatsBannedValue" text="0" style="-fx-text-fill: #ef4444; -fx-font-size: 32px; -fx-font-weight: 900;" />
+                        <Label text="Restricted access" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
+                    </children>
+                </VBox>
+            </children>
+        </GridPane>
+
+        <HBox spacing="24" VBox.vgrow="ALWAYS">
+            <children>
+                <!-- Role Distribution Pie Chart -->
+                <VBox spacing="20" style="-fx-background-color: white; -fx-background-radius: 24; -fx-padding: 28; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" HBox.hgrow="NEVER" prefWidth="420">
+                    <children>
+                        <VBox spacing="4">
+                            <Label text="User Roles" style="-fx-text-fill: #1e293b; -fx-font-size: 20px; -fx-font-weight: 800;" />
+                            <Label text="Distribution by account type" style="-fx-text-fill: #64748b; -fx-font-size: 13px;" />
+                        </VBox>
+                        <StackPane VBox.vgrow="ALWAYS">
+                            <PieChart fx:id="adminStatsRoleChart" labelsVisible="false" legendSide="BOTTOM" />
+                        </StackPane>
+                    </children>
+                </VBox>
+
+                <!-- Registration Trend Line Chart -->
+                <VBox spacing="20" style="-fx-background-color: white; -fx-background-radius: 24; -fx-padding: 28; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 15, 0, 0, 4);" HBox.hgrow="ALWAYS">
+                    <children>
+                        <VBox spacing="4">
+                            <Label text="Registration Trend" style="-fx-text-fill: #1e293b; -fx-font-size: 20px; -fx-font-weight: 800;" />
+                            <Label text="New users joined in the last 7 days" style="-fx-text-fill: #64748b; -fx-font-size: 13px;" />
+                        </VBox>
+                        <LineChart fx:id="adminStatsTrendChart" createSymbols="true" animated="true" legendVisible="false" verticalGridLinesVisible="false" horizontalGridLinesVisible="true">
+                            <xAxis>
+                                <CategoryAxis side="BOTTOM" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis side="LEFT" forceZeroInRange="true" tickUnit="1" />
+                            </yAxis>
+                        </LineChart>
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+
+        <HBox spacing="16">
+           <Label text="Last updated:" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
+           <Label fx:id="adminStatsLastUpdatedLabel" text="Just now" style="-fx-text-fill: #64748b; -fx-font-size: 12px; -fx-font-weight: 600;" />
+           <Region HBox.hgrow="ALWAYS" />
+           <Label text="System Version 2.4.0-stable" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
+        </HBox>
+    </children>
+</VBox>
+
