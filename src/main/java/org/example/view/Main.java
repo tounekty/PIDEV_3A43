@@ -36,6 +36,8 @@ import org.example.controller.ReservationController;
 import org.example.controller.ResourceCatalogController;
 import org.example.controller.ResourceListController;
 import org.example.controller.UserController;
+import org.example.model.ForumRewriteSuggestion;
+import org.example.service.ForumAiRewriteService;
 
 import java.io.File;
 import java.io.IOException;
@@ -228,6 +230,7 @@ public class Main extends Application {
     @FXML private ImageView subjectImagePreview;
     @FXML private CheckBox subjectPinnedCheck;
     @FXML private CheckBox subjectAnonymousCheck;
+    @FXML private Button subjectAiRewriteButton;
     @FXML private Button subjectSaveButton;
     @FXML private Button subjectCancelButton;
     @FXML private TextArea messageContentArea;
@@ -2091,7 +2094,8 @@ public class Main extends Application {
         try {
             String query = forumSearchField == null ? null : forumSearchField.getText().trim();
             String sortBy = forumSortField == null ? null : forumSortField.getValue();
-            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy));
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy, userId));
             clearInlineError(forumErrorLabel);
         } catch (SQLException e) {
             forumListView.getItems().clear();
@@ -2106,12 +2110,46 @@ public class Main extends Application {
             return;
         }
         try {
-            messageListView.getItems().setAll(forumMessageService.getMessagesBySubject(currentSubject.getId()));
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            messageListView.getItems().setAll(forumMessageService.getMessagesBySubject(currentSubject.getId(), userId));
             clearInlineError(messagesErrorLabel);
         } catch (SQLException e) {
             messageListView.getItems().clear();
             setInlineError(messagesErrorLabel, "Chargement des commentaires impossible: " + e.getMessage());
         }
+    }
+
+    private void reactToSubject(ForumSubject subject, boolean like) {
+        if (currentUser == null) {
+            setInlineError(forumErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumService.reactToSubject(subject.getId(), currentUser.getId(), like);
+            loadForumSubjects();
+        } catch (SQLException e) {
+            setInlineError(forumErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private void reactToMessage(ForumMessage message, boolean like) {
+        if (currentUser == null) {
+            setInlineError(messagesErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumMessageService.reactToMessage(message.getId(), currentUser.getId(), like);
+            loadMessages();
+        } catch (SQLException e) {
+            setInlineError(messagesErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private String reactionButtonStyle(Boolean userReactionLike, boolean buttonLike) {
+        if (userReactionLike != null && userReactionLike == buttonLike) {
+            return PRIMARY;
+        }
+        return SECONDARY;
     }
 
     private void showSubjectForm(ForumSubject subject) {
@@ -2157,8 +2195,9 @@ public class Main extends Application {
     }
 
     private void applySubjectPermissions() {
-        boolean admin = currentUser != null && currentUser.isAdmin();
-        subjectPinnedCheck.setDisable(!admin);
+        if (subjectPinnedCheck != null) {
+            subjectPinnedCheck.setDisable(false);
+        }
     }
 
     private void saveSubject() {
@@ -2215,6 +2254,38 @@ public class Main extends Application {
             showPage(forumPage);
         } catch (SQLException e) {
             setInlineError(subjectErrorLabel, "Enregistrement impossible: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleSubjectAiRewrite() {
+        clearInlineError(subjectErrorLabel);
+        String title = subjectTitleField == null ? "" : String.valueOf(subjectTitleField.getText()).trim();
+        String description = subjectDescriptionArea == null ? "" : String.valueOf(subjectDescriptionArea.getText()).trim();
+        if (title.isBlank() && description.isBlank()) {
+            setInlineError(subjectErrorLabel, "Veuillez saisir un titre et/ou une description avant la reformulation.");
+            return;
+        }
+
+        ForumAiRewriteService ai = new ForumAiRewriteService();
+        String modelError = ai.validateModelAvailability();
+        if (modelError != null) {
+            setInlineError(subjectErrorLabel, modelError);
+            return;
+        }
+
+        try {
+            ForumRewriteSuggestion suggestion = ai.rewriteSubject(title, description);
+            if (subjectTitleField != null) {
+                subjectTitleField.setText(suggestion.getTitle());
+            }
+            if (subjectDescriptionArea != null) {
+                subjectDescriptionArea.setText(suggestion.getDescription());
+            }
+        } catch (Exception e) {
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null) rootCause = rootCause.getCause();
+            setInlineError(subjectErrorLabel, "Reformulation IA impossible: " + rootCause.getMessage());
         }
     }
 
@@ -2819,7 +2890,18 @@ public class Main extends Application {
             Label tags = new Label("Categorie: " + safeText(subject.getCategory()) + "   |   Statut: " + safeText(subject.getStatus()));
             tags.setStyle("-fx-text-fill:#2a5fa3; -fx-font-size:12px; -fx-font-weight:700;");
 
-            VBox text = new VBox(10, title, meta, desc, tags);
+            Label stats = new Label("Score: " + (subject.getLikeCount() + subject.getMessageCount() - subject.getDislikeCount())
+                    + "   |   Messages: " + subject.getMessageCount());
+            stats.setStyle("-fx-text-fill:#2a5fa3; -fx-font-size:12px; -fx-font-weight:700;");
+
+            HBox reactions = new HBox(10);
+            Button like = button("Like (" + subject.getLikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), true), e -> reactToSubject(subject, true));
+            Button dislike = button("Dislike (" + subject.getDislikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), false), e -> reactToSubject(subject, false));
+            like.setDisable(currentUser == null);
+            dislike.setDisable(currentUser == null);
+            reactions.getChildren().addAll(like, dislike);
+
+            VBox text = new VBox(10, title, meta, desc, tags, stats, reactions);
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
             VBox actions = new VBox(10); actions.setAlignment(Pos.CENTER_RIGHT);
@@ -2851,7 +2933,14 @@ public class Main extends Application {
             Label content = new Label(message.getContenu());
             content.setWrapText(true); content.setStyle("-fx-text-fill:#415a78; -fx-font-size:13px;");
 
-            VBox box = new VBox(8, header, meta, content);
+            HBox reactions = new HBox(10);
+            Button like = button("Like (" + message.getLikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), true), e -> reactToMessage(message, true));
+            Button dislike = button("Dislike (" + message.getDislikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), false), e -> reactToMessage(message, false));
+            like.setDisable(currentUser == null);
+            dislike.setDisable(currentUser == null);
+            reactions.getChildren().addAll(like, dislike);
+
+            VBox box = new VBox(8, header, meta, content, reactions);
             if (message.getAttachmentPath() != null && !message.getAttachmentPath().isBlank()) {
                 Label att = small("Fichier: " + message.getAttachmentPath());
                 box.getChildren().add(att);

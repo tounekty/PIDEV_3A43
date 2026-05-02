@@ -33,4 +33,12 @@ public class ForumController {
     public List<ForumSubject> getSubjects(String query, String sortBy) throws SQLException {
         return forumService.getSubjects(query, sortBy);
     }
+
+    public List<ForumSubject> getSubjects(String query, String sortBy, Integer userId) throws SQLException {
+        return forumService.getSubjects(query, sortBy, userId);
+    }
+
+    public void reactToSubject(int subjectId, int userId, boolean like) throws SQLException {
+        forumService.reactToSubject(subjectId, userId, like);
+    }
 }

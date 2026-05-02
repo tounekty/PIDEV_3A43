@@ -21,11 +21,19 @@ public class ForumMessageController {
         return forumMessageService.getMessagesBySubject(subjectId);
     }
 
+    public List<ForumMessage> getMessagesBySubject(int subjectId, Integer userId) throws SQLException {
+        return forumMessageService.getMessagesBySubject(subjectId, userId);
+    }
+
     public void deleteMessage(int id) throws SQLException {
         forumMessageService.deleteMessage(id);
     }
 
     public void deleteMessagesForSubject(int subjectId) throws SQLException {
         forumMessageService.deleteMessagesForSubject(subjectId);
+    }
+
+    public void reactToMessage(int messageId, int userId, boolean like) throws SQLException {
+        forumMessageService.reactToMessage(messageId, userId, like);
     }
 }
