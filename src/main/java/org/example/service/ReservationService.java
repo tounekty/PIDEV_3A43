@@ -84,13 +84,13 @@ public class ReservationService {
 
     public Map<String, Map<String, Integer>> getStatsByCategory() throws SQLException {
         Map<String, Map<String, Integer>> stats = new java.util.LinkedHashMap<>();
-        // TODO: Implement - group by category with reservation counts and capacity
+       
         return stats;
     }
 
     public List<Map<String, Object>> getEventReservationStats() throws SQLException {
         List<Map<String, Object>> stats = new java.util.ArrayList<>();
-        // TODO: Implement - event stats with reservation rates
+        
         return stats;
     }
 }

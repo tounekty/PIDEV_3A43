@@ -70,8 +70,18 @@
                                 <Label text="Options" GridPane.rowIndex="4" GridPane.columnIndex="0" style="-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;" />
                                 <HBox spacing="12" GridPane.rowIndex="4" GridPane.columnIndex="1">
                                     <children>
-                                        <CheckBox fx:id="subjectPinnedCheck" text="Epingler" />
-                                        <CheckBox fx:id="subjectAnonymousCheck" text="Poster en anonyme" />
+                                        <HBox spacing="8" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label text="is_pinned" style="-fx-text-fill:#29496f; -fx-font-size:12px; -fx-font-weight:700;" />
+                                                <CheckBox fx:id="subjectPinnedCheck" text="Epingler" />
+                                            </children>
+                                        </HBox>
+                                        <HBox spacing="8" alignment="CENTER_LEFT">
+                                            <children>
+                                                <Label text="anonymous" style="-fx-text-fill:#29496f; -fx-font-size:12px; -fx-font-weight:700;" />
+                                                <CheckBox fx:id="subjectAnonymousCheck" text="Poster en anonyme" />
+                                            </children>
+                                        </HBox>
                                     </children>
                                 </HBox>
                                 <Label text="Cochez pour epingler le sujet ou publier en anonyme."
@@ -80,6 +90,7 @@
                             </children>
                         </GridPane>
                         <HBox spacing="12">
+                            <Button fx:id="subjectAiRewriteButton" text="Reformuler avec IA" onAction="#handleSubjectAiRewrite" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
                             <Button fx:id="subjectSaveButton" text="Publier" onAction="#handleSubjectSave" style="-fx-background-color: linear-gradient(to right,#0f69ff,#38a4ff); -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 14; -fx-padding: 12 18 12 18;" />
                             <Button fx:id="subjectCancelButton" text="Annuler" onAction="#handleSubjectCancel" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
                         </HBox>

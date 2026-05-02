@@ -80,7 +80,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public User login(String email, String password) throws SQLException {
-        String sql = "SELECT id, username, email, first_name, last_name, password, role, email_verified, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE email = ?";
+        String sql = "SELECT id, username, email, first_name, last_name, password, role, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE email = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -100,7 +100,6 @@ public class AuthRepositoryImpl implements AuthRepository {
                                 resultSet.getTimestamp("created_at") != null ? resultSet.getTimestamp("created_at").toLocalDateTime() : null,
                                 resultSet.getTimestamp("updated_at") != null ? resultSet.getTimestamp("updated_at").toLocalDateTime() : null
                         );
-                                user.setEmailVerified(resultSet.getBoolean("email_verified"));
                                 user.setActivationToken(resultSet.getString("activation_token"));
                                 user.setActivationTokenExpiresAt(resultSet.getTimestamp("activation_token_expires_at") != null ? resultSet.getTimestamp("activation_token_expires_at").toLocalDateTime() : null);
                                 user.setResetPasswordToken(resultSet.getString("reset_password_token"));
@@ -121,7 +120,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public User loginByUsername(String username) throws SQLException {
-        String sql = "SELECT id, username, email, first_name, last_name, password, role, email_verified, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE username = ? OR email = ?";
+        String sql = "SELECT id, username, email, first_name, last_name, password, role, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE username = ? OR email = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -163,7 +162,7 @@ public class AuthRepositoryImpl implements AuthRepository {
     public void save(String username, String email, String firstName, String lastName,
                      String hashedPassword, String role, boolean emailVerified,
                      String activationToken, LocalDateTime activationTokenExpiresAt) throws SQLException {
-        String sql = "INSERT INTO users (username, password, role, email, first_name, last_name, email_verified, activation_token, activation_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (username, password, role, email, first_name, last_name, activation_token, activation_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
@@ -173,12 +172,11 @@ public class AuthRepositoryImpl implements AuthRepository {
             preparedStatement.setString(4, email);
             preparedStatement.setString(5, firstName == null ? "" : firstName);
             preparedStatement.setString(6, lastName == null ? "" : lastName);
-            preparedStatement.setBoolean(7, emailVerified);
-            preparedStatement.setString(8, activationToken);
+            preparedStatement.setString(7, activationToken);
             if (activationTokenExpiresAt != null) {
-                preparedStatement.setTimestamp(9, java.sql.Timestamp.valueOf(activationTokenExpiresAt));
+                preparedStatement.setTimestamp(8, java.sql.Timestamp.valueOf(activationTokenExpiresAt));
             } else {
-                preparedStatement.setNull(9, java.sql.Types.TIMESTAMP);
+                preparedStatement.setNull(8, java.sql.Types.TIMESTAMP);
             }
             preparedStatement.executeUpdate();
         }
@@ -197,7 +195,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public User findByEmail(String email) throws SQLException {
-        String sql = "SELECT id, username, email, first_name, last_name, password, role, email_verified, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE email = ?";
+        String sql = "SELECT id, username, email, first_name, last_name, password, role, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE email = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -210,7 +208,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public User findByActivationToken(String token) throws SQLException {
-        String sql = "SELECT id, username, email, first_name, last_name, password, role, email_verified, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE activation_token = ?";
+        String sql = "SELECT id, username, email, first_name, last_name, password, role, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE activation_token = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -223,7 +221,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public User findByPasswordResetToken(String token) throws SQLException {
-        String sql = "SELECT id, username, email, first_name, last_name, password, role, email_verified, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE reset_password_token = ?";
+        String sql = "SELECT id, username, email, first_name, last_name, password, role, face_id_enabled, created_at, updated_at, banned_until, activation_token, activation_token_expires_at, reset_password_token, reset_password_token_expires_at FROM users WHERE reset_password_token = ?";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -236,7 +234,7 @@ public class AuthRepositoryImpl implements AuthRepository {
 
     @Override
     public void markEmailVerified(int userId) throws SQLException {
-        String sql = "UPDATE users SET email_verified = TRUE, activation_token = NULL, activation_token_expires_at = NULL WHERE id = ?";
+        String sql = "UPDATE users SET activation_token = NULL, activation_token_expires_at = NULL WHERE id = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, userId);
@@ -320,7 +318,6 @@ public class AuthRepositoryImpl implements AuthRepository {
                 resultSet.getTimestamp("created_at") == null ? null : resultSet.getTimestamp("created_at").toLocalDateTime(),
                 resultSet.getTimestamp("updated_at") == null ? null : resultSet.getTimestamp("updated_at").toLocalDateTime()
         );
-        user.setEmailVerified(resultSet.getBoolean("email_verified"));
         user.setFaceIdEnabled(resultSet.getBoolean("face_id_enabled"));
         user.setActivationToken(resultSet.getString("activation_token"));
         user.setActivationTokenExpiresAt(resultSet.getTimestamp("activation_token_expires_at") == null ? null : resultSet.getTimestamp("activation_token_expires_at").toLocalDateTime());

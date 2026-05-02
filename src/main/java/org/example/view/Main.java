@@ -26,6 +26,7 @@ import javafx.stage.Stage;
 import org.example.model.User;
 import org.example.model.Event;
 import org.example.model.ForumMessage;
+import org.example.model.ForumRewriteSuggestion;
 import org.example.model.ForumSubject;
 import org.example.model.ReservationRecord;
 import org.example.controller.AuthController;
@@ -36,6 +37,9 @@ import org.example.controller.ReservationController;
 import org.example.controller.ResourceCatalogController;
 import org.example.controller.ResourceListController;
 import org.example.controller.UserController;
+import org.example.service.ForumAiRewriteService;
+import org.example.service.MentionNotificationResult;
+import org.example.service.MentionNotificationService;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +51,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
 import java.util.*;
-
+import java.util.concurrent.CompletableFuture;
 import com.github.sarxos.webcam.Webcam;
 import org.example.service.CompreFaceClient;
 import javax.imageio.ImageIO;
@@ -61,6 +65,7 @@ import javafx.embed.swing.SwingFXUtils;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.util.Duration;
 import javafx.scene.Cursor;
+import java.util.concurrent.CompletionException;
 
 public class Main extends Application {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
@@ -72,6 +77,11 @@ public class Main extends Application {
     private static final String SECONDARY = "-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;";
     private static final String DANGER = "-fx-background-color: #fff4f4; -fx-text-fill: #c63d48; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #ffd5d8; -fx-padding: 11 16 11 16;";
     private static final String INPUT = "-fx-background-color: #f9fbff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #d7e7ff; -fx-padding: 12 14 12 14;";
+    private static final String REACTION_NEUTRAL = "-fx-background-color: white; -fx-text-fill: #2b5f9e; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #cfe3ff; -fx-padding: 8 12 8 12;";
+    private static final String REACTION_LIKE_ACTIVE = "-fx-background-color: linear-gradient(to right,#0f69ff,#38a4ff); -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
+    private static final String REACTION_DISLIKE_ACTIVE = "-fx-background-color: #ff6b7a; -fx-text-fill: white; -fx-font-weight: 700; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: transparent; -fx-padding: 8 12 8 12;";
+    private static final int MAX_MESSAGE_THREAD_LEVEL = 3;
+    private static final int POPULAR_SUBJECT_SCORE_THRESHOLD = 10;
 
     private final EventController eventService = new EventController();
     private final AuthController authService = new AuthController();
@@ -88,7 +98,9 @@ public class Main extends Application {
     private VBox adminDashboardPage;
     private VBox adminUsersListPage;
     private VBox adminUserFormPage;
-
+    private final ForumAiRewriteService forumAiRewriteService = new ForumAiRewriteService();
+    private final MentionNotificationService mentionNotificationService = new MentionNotificationService();
+    private final Map<Integer, ForumMessage> messageIndexById = new HashMap<>();
     private BorderPane root;
     private StackPane pageContainer;
     private VBox loginPage;
@@ -154,17 +166,20 @@ public class Main extends Application {
     @FXML private TextField searchField;
     @FXML private ComboBox<String> sortField;
     @FXML private TextField loginEmailField;
-    @FXML private PasswordField loginPasswordField;
     @FXML private Label loginErrorLabel;
-    @FXML private TextField registerEmailField;
     @FXML private TextField registerFirstNameField;
     @FXML private TextField registerLastNameField;
-    @FXML private PasswordField registerPasswordField;
-    @FXML private PasswordField registerConfirmPasswordField;
-    @FXML private Label registerErrorLabel;
     @FXML private Button confirmAccountButton;
     @FXML private Button forgotPasswordButton;
     private MenuButton accountMenuButton;
+    @FXML private TextField loginUsernameField;
+    @FXML private PasswordField loginPasswordField;
+    @FXML private TextField registerUsernameField;
+    @FXML private TextField registerEmailField;
+    @FXML private PasswordField registerPasswordField;
+    @FXML private PasswordField registerConfirmPasswordField;
+    @FXML private Label registerErrorLabel;
+    private Label userBadge;
     @FXML private Label formTitle;
     @FXML private Label eventsTitle;
     @FXML private Label eventsSubtitle;
@@ -194,11 +209,6 @@ public class Main extends Application {
     @FXML private Label forumTitle;
     @FXML private Label forumErrorLabel;
     private Label forumSubtitle;
-    @FXML private Label messagesTitle;
-    @FXML private Label messagesErrorLabel;
-    @FXML private Label subjectFormTitle;
-    @FXML private Label subjectErrorLabel;
-    @FXML private VBox statsBox;
     @FXML private Label adminStatsTotalUsersValue;
     @FXML private Label adminStatsAdminsValue;
     @FXML private Label adminStatsPsychologuesValue;
@@ -214,8 +224,29 @@ public class Main extends Application {
     @FXML private LineChart<String, Number> adminStatsTrendChart;
     @FXML private Label adminStatsLastUpdatedLabel;
 
+    @FXML private Button forumPrevButton;
+    @FXML private Button forumNextButton;
+    @FXML private Label forumPageLabel;
+    @FXML private Label messagesTitle;
+    @FXML private Label messagesErrorLabel;
+    @FXML private Button messagePrevButton;
+    @FXML private Button messageNextButton;
+    @FXML private Label messagePageLabel;
+    @FXML private Label subjectFormTitle;
+    @FXML private Label subjectErrorLabel;
+    @FXML private VBox statsBox;
+
     private ForumSubject editingSubject;
     private ForumSubject currentSubject;
+    private ForumMessage replyingToMessage;
+
+    // Pagination variables
+    private static final int SUBJECTS_PER_PAGE = 4;
+    private static final int MESSAGES_PER_PAGE = 6;
+    private List<ForumSubject> allForumSubjects = new ArrayList<>();
+    private int currentForumPage = 1;
+    private List<ForumMessage> allForumMessages = new ArrayList<>();
+    private int currentMessagesPage = 1;
 
     @FXML private TextField subjectTitleField;
     @FXML private TextArea subjectDescriptionArea;
@@ -228,12 +259,15 @@ public class Main extends Application {
     @FXML private ImageView subjectImagePreview;
     @FXML private CheckBox subjectPinnedCheck;
     @FXML private CheckBox subjectAnonymousCheck;
+    @FXML private Button subjectAiRewriteButton;
     @FXML private Button subjectSaveButton;
     @FXML private Button subjectCancelButton;
     @FXML private TextArea messageContentArea;
     @FXML private CheckBox messageAnonymousCheck;
     @FXML private TextField messageAttachmentPathField;
     @FXML private Label messageAttachmentMeta;
+    @FXML private Label messageReplyInfoLabel;
+    @FXML private Button messageCancelReplyButton;
     private String messageAttachmentMimeType;
     private Long messageAttachmentSize;
 
@@ -473,6 +507,9 @@ public class Main extends Application {
         if (subjectImageUrlField != null) {
             subjectImageUrlField.setEditable(false);
         }
+        if (subjectDescriptionArea != null) {
+            subjectDescriptionArea.setPromptText("Description, avec @nomUtilisateur pour notifier une personne");
+        }
         initSubjectStatusButtons();
     }
 
@@ -525,6 +562,10 @@ public class Main extends Application {
         if (messageAttachmentPathField != null) {
             messageAttachmentPathField.setEditable(false);
         }
+        if (messageContentArea != null) {
+            messageContentArea.setPromptText("Votre commentaire, avec @nomUtilisateur pour notifier une personne");
+        }
+        clearMessageReplyContext();
     }
 
     private void initializeDatabase() {
@@ -954,6 +995,11 @@ public class Main extends Application {
     }
 
     @FXML
+    private void handleSubjectAiRewrite() {
+        rewriteSubjectWithAi();
+    }
+
+    @FXML
     private void handleSubjectSave() {
         saveSubject();
     }
@@ -986,6 +1032,11 @@ public class Main extends Application {
     }
 
     @FXML
+    private void handleMessageReplyCancel() {
+        clearMessageReplyContext();
+    }
+
+    @FXML
     private void handleGoEvents() {
         loadEvents();
         showPage(eventsPage);
@@ -1010,6 +1061,7 @@ public class Main extends Application {
                 ? loginPasswordField.getText().trim()
                 : "";
 
+        // Clear previous error
         if (loginErrorLabel != null) {
             loginErrorLabel.setVisible(false);
             loginErrorLabel.setManaged(false);
@@ -1164,7 +1216,6 @@ public class Main extends Application {
 
     private void applyRole() {
         boolean backOffice = isBackOfficeUser(currentUser);
-        boolean admin = currentUser != null && currentUser.isAdmin();
         refreshAccountMenuLabel();
         accountMenuButton.setVisible(true); accountMenuButton.setManaged(true);
         if (accountAdminDashboardItem != null) {
@@ -2091,26 +2142,187 @@ public class Main extends Application {
         try {
             String query = forumSearchField == null ? null : forumSearchField.getText().trim();
             String sortBy = forumSortField == null ? null : forumSortField.getValue();
-            forumListView.getItems().setAll(forumService.getSubjects(query, sortBy));
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            
+            // Get all subjects
+            allForumSubjects = forumService.getSubjects(query, sortBy, userId);
+            currentForumPage = 1;
+            
+            displayForumPage();
             clearInlineError(forumErrorLabel);
         } catch (SQLException e) {
+            allForumSubjects.clear();
             forumListView.getItems().clear();
             setInlineError(forumErrorLabel, "Chargement du forum impossible: " + e.getMessage());
         }
     }
 
+    private void displayForumPage() {
+        int totalPages = (int) Math.ceil((double) allForumSubjects.size() / SUBJECTS_PER_PAGE);
+        if (currentForumPage < 1) currentForumPage = 1;
+        if (currentForumPage > totalPages && totalPages > 0) currentForumPage = totalPages;
+
+        int startIdx = (currentForumPage - 1) * SUBJECTS_PER_PAGE;
+        int endIdx = Math.min(startIdx + SUBJECTS_PER_PAGE, allForumSubjects.size());
+        List<ForumSubject> pageSubjects = allForumSubjects.subList(startIdx, endIdx);
+
+        forumListView.getItems().setAll(pageSubjects);
+        
+        if (forumPageLabel != null) {
+            forumPageLabel.setText("Page " + currentForumPage + " / " + Math.max(1, totalPages));
+        }
+        if (forumPrevButton != null) {
+            forumPrevButton.setDisable(currentForumPage <= 1);
+        }
+        if (forumNextButton != null) {
+            forumNextButton.setDisable(currentForumPage >= totalPages || totalPages == 0);
+        }
+    }
+
+    @FXML
+    private void handleForumPrevPage() {
+        currentForumPage--;
+        displayForumPage();
+    }
+
+    @FXML
+    private void handleForumNextPage() {
+        currentForumPage++;
+        displayForumPage();
+    }
+
     private void loadMessages() {
         if (currentSubject == null) {
+            messageIndexById.clear();
             messageListView.getItems().clear();
+            allForumMessages.clear();
+            currentMessagesPage = 1;
             clearInlineError(messagesErrorLabel);
             return;
         }
         try {
-            messageListView.getItems().setAll(forumMessageService.getMessagesBySubject(currentSubject.getId()));
+            Integer userId = currentUser == null ? null : currentUser.getId();
+            List<ForumMessage> rawMessages = forumMessageService.getMessagesBySubject(currentSubject.getId(), userId);
+            messageIndexById.clear();
+            for (ForumMessage message : rawMessages) {
+                if (message.getId() > 0) {
+                    messageIndexById.put(message.getId(), message);
+                }
+            }
+            allForumMessages = buildThreadedMessages(rawMessages);
+            currentMessagesPage = 1;
+            displayMessagesPage();
             clearInlineError(messagesErrorLabel);
         } catch (SQLException e) {
+            messageIndexById.clear();
             messageListView.getItems().clear();
+            allForumMessages.clear();
             setInlineError(messagesErrorLabel, "Chargement des commentaires impossible: " + e.getMessage());
+        }
+    }
+
+    private void displayMessagesPage() {
+        int totalPages = (int) Math.ceil((double) allForumMessages.size() / MESSAGES_PER_PAGE);
+        if (currentMessagesPage < 1) currentMessagesPage = 1;
+        if (currentMessagesPage > totalPages && totalPages > 0) currentMessagesPage = totalPages;
+
+        int startIdx = (currentMessagesPage - 1) * MESSAGES_PER_PAGE;
+        int endIdx = Math.min(startIdx + MESSAGES_PER_PAGE, allForumMessages.size());
+        List<ForumMessage> pageMessages = allForumMessages.subList(startIdx, endIdx);
+
+        messageListView.getItems().setAll(pageMessages);
+        
+        if (messagePageLabel != null) {
+            messagePageLabel.setText("Page " + currentMessagesPage + " / " + Math.max(1, totalPages));
+        }
+        if (messagePrevButton != null) {
+            messagePrevButton.setDisable(currentMessagesPage <= 1);
+        }
+        if (messageNextButton != null) {
+            messageNextButton.setDisable(currentMessagesPage >= totalPages || totalPages == 0);
+        }
+    }
+
+    @FXML
+    private void handleMessagePrevPage() {
+        currentMessagesPage--;
+        displayMessagesPage();
+    }
+
+    @FXML
+    private void handleMessageNextPage() {
+        currentMessagesPage++;
+        displayMessagesPage();
+    }
+
+    private List<ForumMessage> buildThreadedMessages(List<ForumMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Comparator<ForumMessage> byDateThenId = Comparator
+                .comparing((ForumMessage m) -> m.getDateMessage() == null ? LocalDateTime.MIN : m.getDateMessage())
+                .thenComparingInt(ForumMessage::getId);
+
+        Set<Integer> knownIds = new HashSet<>();
+        for (ForumMessage message : messages) {
+            if (message.getId() > 0) {
+                knownIds.add(message.getId());
+            }
+            message.setThreadLevel(1);
+        }
+
+        Map<Integer, List<ForumMessage>> childrenByParent = new HashMap<>();
+        List<ForumMessage> roots = new ArrayList<>();
+        for (ForumMessage message : messages) {
+            Integer parentId = message.getParentMessageId();
+            if (parentId == null || parentId <= 0 || !knownIds.contains(parentId)) {
+                roots.add(message);
+            } else {
+                childrenByParent.computeIfAbsent(parentId, key -> new ArrayList<>()).add(message);
+            }
+        }
+
+        roots.sort(byDateThenId);
+        for (List<ForumMessage> children : childrenByParent.values()) {
+            children.sort(byDateThenId);
+        }
+
+        List<ForumMessage> flattened = new ArrayList<>();
+        Set<Integer> visited = new HashSet<>();
+        for (ForumMessage root : roots) {
+            appendThreadedMessage(root, 1, childrenByParent, flattened, visited);
+        }
+
+        // Fallback to keep all rows visible even if malformed parent chains exist.
+        for (ForumMessage message : messages) {
+            if (!visited.contains(message.getId())) {
+                appendThreadedMessage(message, 1, childrenByParent, flattened, visited);
+            }
+        }
+
+        return flattened;
+    }
+
+    private void appendThreadedMessage(ForumMessage message,
+                                       int level,
+                                       Map<Integer, List<ForumMessage>> childrenByParent,
+                                       List<ForumMessage> flattened,
+                                       Set<Integer> visited) {
+        if (message == null || message.getId() <= 0 || !visited.add(message.getId())) {
+            return;
+        }
+
+        message.setThreadLevel(level);
+        flattened.add(message);
+
+        List<ForumMessage> children = childrenByParent.get(message.getId());
+        if (children == null || children.isEmpty()) {
+            return;
+        }
+
+        for (ForumMessage child : children) {
+            appendThreadedMessage(child, level + 1, childrenByParent, flattened, visited);
         }
     }
 
@@ -2120,7 +2332,7 @@ public class Main extends Application {
         boolean editing = subject != null;
         subjectSaveButton.setText(editing ? "Enregistrer" : "Publier");
         if (subjectFormTitle != null) {
-            subjectFormTitle.setText(editing ? "Modifier sujet #" + subject.getId() : "Nouveau sujet");
+            subjectFormTitle.setText(editing ? "Modifier sujet" : "Nouveau sujet");
         }
         subjectCancelButton.setVisible(true);
         subjectCancelButton.setManaged(true);
@@ -2203,7 +2415,8 @@ public class Main extends Application {
         try {
             if (editingSubject == null) {
                 forumService.addSubject(subject);
-                showInfo("Sujet publie", "Le sujet a ete ajoute.");
+                String mentionMessage = notifySubjectMentions(subject);
+                showInfo("Sujet publie", "Le sujet a ete ajoute." + mentionMessage);
             } else {
                 subject.setId(editingSubject.getId());
                 forumService.updateSubject(subject);
@@ -2216,6 +2429,77 @@ public class Main extends Application {
         } catch (SQLException e) {
             setInlineError(subjectErrorLabel, "Enregistrement impossible: " + e.getMessage());
         }
+    }
+
+    private void rewriteSubjectWithAi() {
+        clearInlineError(subjectErrorLabel);
+        String title = subjectTitleField.getText() == null ? "" : subjectTitleField.getText().trim();
+        String description = subjectDescriptionArea.getText() == null ? "" : subjectDescriptionArea.getText().trim();
+
+        if (title.isBlank() && description.isBlank()) {
+            setInlineError(subjectErrorLabel, "Ecrivez un titre ou une description avant la reformulation.");
+            return;
+        }
+        if (!forumAiRewriteService.isConfigured()) {
+            setInlineError(subjectErrorLabel, "Ollama n'est pas configure. Verifiez OLLAMA_BASE_URL puis relancez l'application.");
+            return;
+        }
+
+        // quick model availability check to provide clearer errors (token vs model permissions)
+        String modelCheck = forumAiRewriteService.validateModelAvailability();
+        if (modelCheck != null) {
+            setInlineError(subjectErrorLabel, "Reformulation IA impossible: " + modelCheck);
+            return;
+        }
+
+        setSubjectAiRewriteRunning(true);
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        return forumAiRewriteService.rewriteSubject(title, description);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .whenComplete((suggestion, error) -> Platform.runLater(() -> {
+                    setSubjectAiRewriteRunning(false);
+                    if (error != null) {
+                        Throwable cause = unwrapAsyncError(error);
+                        setInlineError(subjectErrorLabel, "Reformulation IA impossible: " + cause.getMessage());
+                        return;
+                    }
+                    applySubjectRewriteSuggestion(suggestion);
+                }));
+    }
+
+    private void setSubjectAiRewriteRunning(boolean running) {
+        if (subjectAiRewriteButton != null) {
+            subjectAiRewriteButton.setDisable(running);
+            subjectAiRewriteButton.setText(running ? "Reformulation..." : "Reformuler avec IA");
+        }
+        if (subjectSaveButton != null) {
+            subjectSaveButton.setDisable(running);
+        }
+    }
+
+    private void applySubjectRewriteSuggestion(ForumRewriteSuggestion suggestion) {
+        if (suggestion == null) {
+            setInlineError(subjectErrorLabel, "Reponse IA vide.");
+            return;
+        }
+        subjectTitleField.setText(suggestion.getTitle());
+        subjectDescriptionArea.setText(suggestion.getDescription());
+        clearInlineError(subjectErrorLabel);
+        showInfo("Reformulation IA", "Le sujet a ete reformule. Relisez puis cliquez sur Publier.");
+    }
+
+    private Throwable unwrapAsyncError(Throwable error) {
+        Throwable current = error;
+        while ((current instanceof CompletionException || current instanceof RuntimeException)
+                && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     private void selectStatusButton(String status) {
@@ -2243,7 +2527,7 @@ public class Main extends Application {
     private void deleteSubject(ForumSubject subject) {
         if (!canEditSubject(subject)) { setInlineError(forumErrorLabel, "Vous ne pouvez pas supprimer ce sujet."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Supprimer le sujet #" + subject.getId());
+        alert.setHeaderText("Supprimer le sujet");
         alert.setContentText("Confirmer la suppression de " + subject.getTitre() + " ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
@@ -2271,6 +2555,10 @@ public class Main extends Application {
         if (currentUser == null) { setInlineError(messagesErrorLabel, "Connexion requise."); return; }
         if (currentSubject == null) { setInlineError(messagesErrorLabel, "Veuillez selectionner un sujet."); return; }
         if (messageContentArea.getText().isBlank()) { setInlineError(messagesErrorLabel, "Le commentaire est obligatoire."); return; }
+        if (replyingToMessage != null && replyingToMessage.getThreadLevel() >= MAX_MESSAGE_THREAD_LEVEL) {
+            setInlineError(messagesErrorLabel, "Le niveau maximum de reponse (3) est atteint.");
+            return;
+        }
 
         ForumMessage message = new ForumMessage();
         message.setContenu(messageContentArea.getText().trim());
@@ -2281,26 +2569,77 @@ public class Main extends Application {
         message.setAttachmentSize(messageAttachmentSize);
         message.setIdSujet(currentSubject.getId());
         message.setIdUser(currentUser.getId());
+        message.setParentMessageId(replyingToMessage == null ? null : replyingToMessage.getId());
 
         try {
             forumMessageService.addMessage(message);
+            String mentionMessage = notifyMessageMentions(message);
             resetMessageForm();
             loadMessages();
             clearInlineError(messagesErrorLabel);
+            if (!mentionMessage.isBlank()) {
+                showInfo("Commentaire publie", "Le commentaire a ete ajoute." + mentionMessage);
+            }
         } catch (SQLException e) {
             setInlineError(messagesErrorLabel, "Commentaire impossible: " + e.getMessage());
         }
     }
 
+    private String notifySubjectMentions(ForumSubject subject) {
+        try {
+            // Debug: show extracted mentions
+            Set<String> mentions = mentionNotificationService.extractMentionedUsernames(
+                subject.getTitre(), subject.getDescription());
+            if (!mentions.isEmpty()) {
+                System.out.println("[DEBUG] Mentions detectees dans sujet: " + mentions);
+            }
+            return formatMentionNotification(mentionNotificationService.notifySubjectMentions(subject, currentUser));
+        } catch (SQLException e) {
+            return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
+        }
+    }
+
+    private String notifyMessageMentions(ForumMessage message) {
+        try {
+            // Debug: show extracted mentions
+            Set<String> mentions = mentionNotificationService.extractMentionedUsernames(message.getContenu());
+            if (!mentions.isEmpty()) {
+                System.out.println("[DEBUG] Mentions detectees dans message: " + mentions);
+            }
+            return formatMentionNotification(mentionNotificationService.notifyMessageMentions(currentSubject, message, currentUser));
+        } catch (SQLException e) {
+            return "\nMentions detectees, mais verification des utilisateurs impossible: " + e.getMessage();
+        }
+    }
+
+    private String formatMentionNotification(MentionNotificationResult result) {
+        if (result == null || result.getMentionedUsers() == 0) {
+            return "";
+        }
+        if (!result.isMailConfigured()) {
+            return "\n✓ " + result.getMentionedUsers() + " mention(s) trouvee(s) et detectable(s).\nConfigurez SMTP_HOST et SMTP_FROM pour envoyer les e-mails de notification.";
+        }
+        if (result.getEmailsSent() == result.getMentionedUsers()) {
+            return "\n✓ E-mail(s) envoye(s) a " + result.getEmailsSent() + " personne(s) mentionnee(s).";
+        }
+        String detail = result.getFirstError().isBlank() ? "" : "\nErreur: " + result.getFirstError();
+        return "\n✓ Mentions detectees: " + result.getMentionedUsers() + 
+               " | E-mails envoyes: " + result.getEmailsSent() + 
+               ", echecs: " + result.getEmailsFailed() + "." + detail;
+    }
+
     private void deleteMessage(ForumMessage message) {
         if (!canDeleteMessage(message)) { setInlineError(messagesErrorLabel, "Vous ne pouvez pas supprimer ce commentaire."); return; }
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setHeaderText("Supprimer le commentaire #" + message.getId());
+        alert.setHeaderText("Supprimer le commentaire " );
         alert.setContentText("Confirmer la suppression du commentaire ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
             try {
                 forumMessageService.deleteMessage(message.getId());
+                if (replyingToMessage != null && Objects.equals(replyingToMessage.getId(), message.getId())) {
+                    clearMessageReplyContext();
+                }
                 loadMessages();
             } catch (SQLException e) {
                 setInlineError(messagesErrorLabel, "Suppression impossible: " + e.getMessage());
@@ -2312,6 +2651,7 @@ public class Main extends Application {
         messageContentArea.clear();
         messageAnonymousCheck.setSelected(false);
         clearMessageAttachment();
+        clearMessageReplyContext();
     }
 
     private boolean canEditSubject(ForumSubject subject) {
@@ -2322,6 +2662,111 @@ public class Main extends Application {
     private boolean canDeleteMessage(ForumMessage message) {
         if (currentUser == null) return false;
         return currentUser.isAdmin() || message.getIdUser() == currentUser.getId();
+    }
+
+    private void reactToSubject(ForumSubject subject, boolean like) {
+        if (subject == null) {
+            return;
+        }
+        if (currentUser == null) {
+            setInlineError(forumErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumService.reactToSubject(subject.getId(), currentUser.getId(), like);
+            loadForumSubjects();
+            clearInlineError(forumErrorLabel);
+        } catch (SQLException e) {
+            setInlineError(forumErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private void reactToMessage(ForumMessage message, boolean like) {
+        if (message == null) {
+            return;
+        }
+        if (currentUser == null) {
+            setInlineError(messagesErrorLabel, "Connexion requise pour liker/disliker.");
+            return;
+        }
+        try {
+            forumMessageService.reactToMessage(message.getId(), currentUser.getId(), like);
+            loadMessages();
+            clearInlineError(messagesErrorLabel);
+        } catch (SQLException e) {
+            setInlineError(messagesErrorLabel, "Reaction impossible: " + e.getMessage());
+        }
+    }
+
+    private String reactionButtonStyle(Boolean userReactionLike, boolean buttonLike) {
+        if (userReactionLike != null && userReactionLike == buttonLike) {
+            return buttonLike ? REACTION_LIKE_ACTIVE : REACTION_DISLIKE_ACTIVE;
+        }
+        return REACTION_NEUTRAL;
+    }
+
+    private String displayMessageAuthor(ForumMessage message) {
+        if (message == null) {
+            return "Utilisateur";
+        }
+        if (message.isAnonymous()) {
+            return "Anonyme";
+        }
+        if (message.getUsername() == null || message.getUsername().isBlank()) {
+            return "Utilisateur";
+        }
+        return message.getUsername();
+    }
+
+    private ForumMessage findMessageById(Integer messageId) {
+        if (messageId == null || messageId <= 0) {
+            return null;
+        }
+        return messageIndexById.get(messageId);
+    }
+
+    private boolean canReplyToMessage(ForumMessage message) {
+        return currentUser != null && message != null && message.getThreadLevel() < MAX_MESSAGE_THREAD_LEVEL;
+    }
+
+    private void startReplyToMessage(ForumMessage message) {
+        if (message == null) {
+            return;
+        }
+        if (!canReplyToMessage(message)) {
+            setInlineError(messagesErrorLabel, "Vous ne pouvez pas repondre a ce niveau.");
+            return;
+        }
+
+        replyingToMessage = message;
+        String author = message.isAnonymous() ? "Anonyme" : (message.getUsername() == null ? "Utilisateur" : message.getUsername());
+        String preview = message.getContenu() == null ? "" : message.getContenu().trim();
+        if (preview.length() > 40) {
+            preview = preview.substring(0, 40) + "...";
+        }
+        if (messageReplyInfoLabel != null) {
+            messageReplyInfoLabel.setText("Reponse a " + author + " : " + preview);
+            messageReplyInfoLabel.setVisible(true);
+            messageReplyInfoLabel.setManaged(true);
+        }
+        if (messageCancelReplyButton != null) {
+            messageCancelReplyButton.setVisible(true);
+            messageCancelReplyButton.setManaged(true);
+        }
+        messageContentArea.requestFocus();
+    }
+
+    private void clearMessageReplyContext() {
+        replyingToMessage = null;
+        if (messageReplyInfoLabel != null) {
+            messageReplyInfoLabel.setText("");
+            messageReplyInfoLabel.setVisible(false);
+            messageReplyInfoLabel.setManaged(false);
+        }
+        if (messageCancelReplyButton != null) {
+            messageCancelReplyButton.setVisible(false);
+            messageCancelReplyButton.setManaged(false);
+        }
     }
 
     private void chooseMessageAttachment() {
@@ -2543,7 +2988,7 @@ public class Main extends Application {
 
     private void delete(Event event) {
         if (currentUser == null || !currentUser.isAdmin()) { showError("Acces refuse", "Seul l'admin peut supprimer."); return; }
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION); alert.setHeaderText("Supprimer l'evenement #" + event.getId()); alert.setContentText("Confirmer la suppression de " + event.getTitre() + " ?");
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION); alert.setHeaderText("Supprimer l'evenement "); alert.setContentText("Confirmer la suppression de " + event.getTitre() + " ?");
         Optional<ButtonType> ok = alert.showAndWait();
         if (ok.isPresent() && ok.get().getButtonData() == ButtonBar.ButtonData.OK_DONE) {
             try { reservationService.deleteReservationsForEvent(event.getId()); eventService.deleteEvent(event.getId()); loadEvents(); loadReservations(); }
@@ -2811,15 +3256,29 @@ public class Main extends Application {
             String author = subject.isAnonymous() ? "Anonyme" : (subject.getUsername() == null ? "Utilisateur #" + subject.getIdUser() : subject.getUsername());
             String dateText = subject.getDateCreation() == null ? "" : subject.getDateCreation().format(EVENT_FMT);
             String pinned = subject.isPinned() ? "Epingle" : "Normal";
+            int successScore = subject.getLikeCount() + subject.getMessageCount() - subject.getDislikeCount();
 
             Label title = new Label(subject.getTitre()); title.setStyle("-fx-text-fill:#10233f; -fx-font-size:18px; -fx-font-weight:800;");
+            Label successBadge = new Label("Succes");
+            successBadge.setStyle("-fx-text-fill:#0f69ff; -fx-background-color:rgba(15,105,255,0.12); -fx-background-radius:999; -fx-padding:3 10 3 10; -fx-font-size:11px; -fx-font-weight:800;");
+            successBadge.setVisible(successScore >= POPULAR_SUBJECT_SCORE_THRESHOLD);
+            successBadge.setManaged(successScore >= POPULAR_SUBJECT_SCORE_THRESHOLD);
+            HBox titleRow = new HBox(8, title, successBadge);
+            titleRow.setAlignment(Pos.CENTER_LEFT);
             Label meta = small("Auteur: " + author + "  |  " + dateText + "  |  " + pinned);
             Label desc = new Label(subject.getDescription() == null ? "" : subject.getDescription());
             desc.setWrapText(true); desc.setStyle("-fx-text-fill:#415a78; -fx-font-size:13px;");
             Label tags = new Label("Categorie: " + safeText(subject.getCategory()) + "   |   Statut: " + safeText(subject.getStatus()));
             tags.setStyle("-fx-text-fill:#2a5fa3; -fx-font-size:12px; -fx-font-weight:700;");
 
-            VBox text = new VBox(10, title, meta, desc, tags);
+            Button like = button("Like (" + subject.getLikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), true), e -> reactToSubject(subject, true));
+            Button dislike = button("Dislike (" + subject.getDislikeCount() + ")", reactionButtonStyle(subject.getUserReactionLike(), false), e -> reactToSubject(subject, false));
+            HBox reactions = new HBox(8, like, dislike);
+            reactions.setAlignment(Pos.CENTER_LEFT);
+            Label reactionHint = small("Cliquez une deuxieme fois pour retirer votre reaction.");
+            reactionHint.setStyle("-fx-text-fill:#6b819d; -fx-font-size:11px;");
+
+            VBox text = new VBox(10, titleRow, meta, desc, tags, reactions, reactionHint);
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
 
             VBox actions = new VBox(10); actions.setAlignment(Pos.CENTER_RIGHT);
@@ -2843,28 +3302,80 @@ public class Main extends Application {
             super.updateItem(message, empty);
             if (empty || message == null) { setGraphic(null); setText(null); return; }
 
-            String author = message.isAnonymous() ? "Anonyme" : (message.getUsername() == null ? "Utilisateur #" + message.getIdUser() : message.getUsername());
+            String author = displayMessageAuthor(message);
             String dateText = message.getDateMessage() == null ? "" : message.getDateMessage().format(RES_FMT);
+            int level = Math.max(1, Math.min(MAX_MESSAGE_THREAD_LEVEL, message.getThreadLevel()));
+            String levelText = level == 1 ? "Commentaire" : "Reponse N" + level;
 
             Label header = title(author, 14);
+            Label levelBadge = new Label(levelText);
+            levelBadge.setStyle(level == 1
+                    ? "-fx-text-fill:#1d4f92; -fx-background-color:rgba(29,79,146,0.10); -fx-background-radius:999; -fx-padding:3 10 3 10; -fx-font-size:11px; -fx-font-weight:700;"
+                    : "-fx-text-fill:#2a6dc0; -fx-background-color:rgba(15,105,255,0.12); -fx-background-radius:999; -fx-padding:3 10 3 10; -fx-font-size:11px; -fx-font-weight:700;");
+            HBox headerRow = new HBox(8, header, levelBadge);
+            headerRow.setAlignment(Pos.CENTER_LEFT);
+
             Label meta = small(dateText);
             Label content = new Label(message.getContenu());
             content.setWrapText(true); content.setStyle("-fx-text-fill:#415a78; -fx-font-size:13px;");
 
-            VBox box = new VBox(8, header, meta, content);
+            VBox box = new VBox(8, headerRow, meta);
+            box.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(box, Priority.ALWAYS);
+
+            if (level > 1) {
+                ForumMessage parent = findMessageById(message.getParentMessageId());
+                String parentAuthor = parent == null
+                        ? (message.getParentMessageId() == null ? "Commentaire parent" : "Commentaire #" + message.getParentMessageId())
+                        : displayMessageAuthor(parent);
+                Label relation = new Label("Reponse a " + parentAuthor);
+                relation.setStyle("-fx-text-fill:#2f6db3; -fx-font-size:12px; -fx-font-weight:700;");
+                box.getChildren().add(relation);
+            }
+
+            box.getChildren().add(content);
             if (message.getAttachmentPath() != null && !message.getAttachmentPath().isBlank()) {
                 Label att = small("Fichier: " + message.getAttachmentPath());
                 box.getChildren().add(att);
             }
 
+            Button like = button("Like (" + message.getLikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), true), e -> reactToMessage(message, true));
+            Button dislike = button("Dislike (" + message.getDislikeCount() + ")", reactionButtonStyle(message.getUserReactionLike(), false), e -> reactToMessage(message, false));
+            HBox reactions = new HBox(8, like, dislike);
+            reactions.setAlignment(Pos.CENTER_LEFT);
+            box.getChildren().add(reactions);
+
             Region spacer = new Region(); HBox.setHgrow(spacer, Priority.ALWAYS);
+            Button reply = button("Repondre", SECONDARY, e -> startReplyToMessage(message));
+            reply.setDisable(!canReplyToMessage(message));
             Button del = button("Supprimer", DANGER, e -> deleteMessage(message));
             del.setDisable(!canDeleteMessage(message));
+            VBox actions = new VBox(8, reply, del);
+            actions.setAlignment(Pos.TOP_RIGHT);
 
-            HBox row = new HBox(16, box, spacer, del);
-            row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(16));
-            row.setStyle("-fx-background-color: linear-gradient(to right, rgba(255,255,255,0.98), rgba(244,249,255,0.95)); -fx-background-radius:22; -fx-border-radius:22; -fx-border-color: rgba(138,182,238,0.24);");
-            setGraphic(row);
+            HBox card = new HBox(12, box, spacer, actions);
+            card.setAlignment(Pos.TOP_LEFT);
+            card.setPadding(new Insets(14));
+            card.setStyle(level == 1
+                    ? "-fx-background-color: linear-gradient(to right, rgba(255,255,255,0.99), rgba(245,250,255,0.98)); -fx-background-radius:18; -fx-border-radius:18; -fx-border-width:1; -fx-border-color: rgba(138,182,238,0.28);"
+                    : "-fx-background-color: rgba(248,252,255,0.98); -fx-background-radius:16; -fx-border-radius:16; -fx-border-width:1 1 1 4; -fx-border-color: rgba(138,182,238,0.25) rgba(138,182,238,0.25) rgba(138,182,238,0.25) #5b95e9;");
+
+            Region indent = new Region();
+            double indentWidth = (level - 1) * 34;
+            indent.setMinWidth(indentWidth);
+            indent.setPrefWidth(indentWidth);
+
+            HBox row = new HBox(0);
+            row.setAlignment(Pos.TOP_LEFT);
+            if (level > 1) {
+                row.getChildren().add(indent);
+            }
+            row.getChildren().add(card);
+            HBox.setHgrow(card, Priority.ALWAYS);
+
+            VBox wrapper = new VBox(row);
+            wrapper.setPadding(new Insets(0, 0, 8, 0));
+            setGraphic(wrapper);
         }
     }
 

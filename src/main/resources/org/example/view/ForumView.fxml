@@ -32,6 +32,11 @@
                             <Button text="Actualiser" onAction="#handleRefreshForum" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 11 16 11 16;" />
                         </HBox>
                         <ListView fx:id="forumListView" style="-fx-background-color:transparent; -fx-control-inner-background:transparent; -fx-padding:6;" VBox.vgrow="ALWAYS" />
+                        <HBox spacing="12" alignment="CENTER" style="-fx-padding: 12 0 0 0;">
+                            <Button fx:id="forumPrevButton" text="← Precedent" onAction="#handleForumPrevPage" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 10 16 10 16;" />
+                            <Label fx:id="forumPageLabel" text="Page 1" style="-fx-text-fill:#10233f; -fx-font-size:13px; -fx-font-weight:700;" />
+                            <Button fx:id="forumNextButton" text="Suivant →" onAction="#handleForumNextPage" style="-fx-background-color: white; -fx-text-fill: #1c4f96; -fx-font-weight: 700; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #cfe3ff; -fx-padding: 10 16 10 16;" />
+                        </HBox>
                     </children>
                 </VBox>
             </content>
