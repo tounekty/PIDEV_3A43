@@ -96,7 +96,8 @@ public class ForumService {
                 throw new SQLException("Un sujet avec la meme description existe deja: " + existing.getTitre());
             }
 
-            if (!titleTokens.isEmpty() && jaccardSimilarity(titleTokens, tokens(existingTitle)) >= TITLE_SIMILARITY_THRESHOLD) {
+            if (!titleTokens.isEmpty()
+                    && jaccardSimilarity(titleTokens, tokens(existingTitle)) >= TITLE_SIMILARITY_THRESHOLD) {
                 throw new SQLException("Un sujet tres similaire existe deja: #" + existing.getId() + " - " + existing.getTitre());
             }
 

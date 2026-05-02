@@ -282,7 +282,7 @@ public class ForumRepositoryImpl implements ForumRepository {
                 + "s.category, s.attachment_path, s.attachment_mime_type, s.attachment_size, s.id_user, u.username, "
                 + "(SELECT COUNT(*) FROM " + REACTION_TABLE + " sr WHERE sr.id_sujet = s.id AND sr.is_like = 1) AS like_count, "
                 + "(SELECT COUNT(*) FROM " + REACTION_TABLE + " sr WHERE sr.id_sujet = s.id AND sr.is_like = 0) AS dislike_count, "
-            + "(SELECT COUNT(*) FROM message_forum mf WHERE mf.id_sujet = s.id) AS message_count, "
+                + "(SELECT COUNT(*) FROM message_forum mf WHERE mf.id_sujet = s.id) AS message_count, "
                 + "(SELECT sr.is_like FROM " + REACTION_TABLE + " sr WHERE sr.id_sujet = s.id AND sr.id_user = ? LIMIT 1) AS user_reaction_like "
                 + "FROM " + TABLE_NAME + " s "
                 + "LEFT JOIN users u ON u.id = s.id_user";
@@ -310,8 +310,8 @@ public class ForumRepositoryImpl implements ForumRepository {
 
         Integer idUser = resultSet.getObject("id_user") != null ? resultSet.getInt("id_user") : null;
         Boolean userReactionLike = resultSet.getObject("user_reaction_like") == null
-            ? null
-            : resultSet.getBoolean("user_reaction_like");
+                ? null
+                : resultSet.getBoolean("user_reaction_like");
         ForumSubject subject = new ForumSubject(
                 resultSet.getInt("id"),
                 resultSet.getString("titre"),

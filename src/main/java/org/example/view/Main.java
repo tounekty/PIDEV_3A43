@@ -15,8 +15,6 @@ import javafx.scene.Scene;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -57,7 +55,7 @@ import org.example.service.CompreFaceClient;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.util.Base64;
+
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import java.util.function.Consumer;
@@ -179,7 +177,7 @@ public class Main extends Application {
     @FXML private PasswordField registerPasswordField;
     @FXML private PasswordField registerConfirmPasswordField;
     @FXML private Label registerErrorLabel;
-    private Label userBadge;
+    @FXML private Label userBadge;
     @FXML private Label formTitle;
     @FXML private Label eventsTitle;
     @FXML private Label eventsSubtitle;
@@ -208,7 +206,7 @@ public class Main extends Application {
     @FXML private ComboBox<String> forumSortField;
     @FXML private Label forumTitle;
     @FXML private Label forumErrorLabel;
-    private Label forumSubtitle;
+    @FXML private Label forumSubtitle;
     @FXML private Label adminStatsTotalUsersValue;
     @FXML private Label adminStatsAdminsValue;
     @FXML private Label adminStatsPsychologuesValue;
@@ -2369,8 +2367,9 @@ public class Main extends Application {
     }
 
     private void applySubjectPermissions() {
-        boolean admin = currentUser != null && currentUser.isAdmin();
-        subjectPinnedCheck.setDisable(!admin);
+        if (subjectPinnedCheck != null) {
+            subjectPinnedCheck.setDisable(false);
+        }
     }
 
     private void saveSubject() {
@@ -2812,6 +2811,7 @@ public class Main extends Application {
         return String.format(Locale.US, "%.1f Mo", mb);
     }
 
+    @SuppressWarnings("unused")
     private VBox buildStatsPanel() throws SQLException {
         VBox statsBox = new VBox(20);
         statsBox.setPadding(new Insets(16));
@@ -3034,17 +3034,6 @@ public class Main extends Application {
         updateImagePreview("", subjectImagePreview, subjectImageMeta);
     }
 
-    private ImageView buildImagePreview() {
-        ImageView view = new ImageView();
-        view.setFitWidth(260);
-        view.setFitHeight(160);
-        view.setPreserveRatio(true);
-        view.setSmooth(true);
-        view.setVisible(false);
-        view.setManaged(false);
-        return view;
-    }
-
     private void updateImagePreview(String path, ImageView preview, Label meta) {
         if (preview == null || meta == null) return;
         if (path == null || path.isBlank()) {
@@ -3157,12 +3146,11 @@ public class Main extends Application {
 
     private GridPane formGrid() { GridPane g = new GridPane(); g.setHgap(14); g.setVgap(14); return g; }
     private void addRow(GridPane g, int row, String label, Node field) { Label l = new Label(label); l.setStyle("-fx-text-fill:#29496f; -fx-font-size:13px; -fx-font-weight:700;"); g.add(l, 0, row); g.add(field, 1, row); GridPane.setHgrow(field, Priority.ALWAYS); }
-    private TextField input(String prompt) { TextField f = new TextField(); f.setPromptText(prompt); f.setStyle(INPUT); return f; }
     private Label small(String text) { Label l = new Label(text); l.setStyle("-fx-text-fill:#637a97; -fx-font-size:13px;"); return l; }
     private Label title(String text, int size) { Label l = new Label(text); l.setStyle("-fx-text-fill:#10233f; -fx-font-size:" + size + "px; -fx-font-weight:800;"); return l; }
     private Button button(String text, String style, javafx.event.EventHandler<javafx.event.ActionEvent> handler) { Button b = new Button(text); b.setStyle(style); b.setOnAction(handler); return b; }
+    @SuppressWarnings("unused")
     private VBox card(Node... nodes) { VBox b = new VBox(16, nodes); b.setPadding(new Insets(28)); b.setStyle(CARD); return b; }
-    private VBox scrollPage(VBox content) { VBox page = new VBox(content); page.setPadding(new Insets(8)); ScrollPane s = new ScrollPane(page); s.setFitToWidth(true); s.setPannable(true); s.setStyle("-fx-background-color:transparent; -fx-background:transparent;"); s.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); VBox wrapper = new VBox(s); VBox.setVgrow(s, Priority.ALWAYS); return wrapper; }
     private void showWarning(String m) { alert(Alert.AlertType.WARNING, "Validation", m); }
     private void showError(String t, String m) { alert(Alert.AlertType.ERROR, t, m); }
     private void showInfo(String t, String m) { alert(Alert.AlertType.INFORMATION, t, m); }

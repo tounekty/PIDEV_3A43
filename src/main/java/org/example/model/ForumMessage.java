@@ -44,12 +44,12 @@ public class ForumMessage {
                         String attachmentMimeType, Long attachmentSize, int idSujet, int idUser, String username,
                         Integer parentMessageId) {
         this(id, contenu, dateMessage, anonymous, attachmentPath, attachmentMimeType, attachmentSize,
-            idSujet, idUser, username, parentMessageId, 0, 0, null);
-        }
+                idSujet, idUser, username, parentMessageId, 0, 0, null);
+    }
 
-        public ForumMessage(int id, String contenu, LocalDateTime dateMessage, boolean anonymous, String attachmentPath,
-                String attachmentMimeType, Long attachmentSize, int idSujet, int idUser, String username,
-                Integer parentMessageId, int likeCount, int dislikeCount, Boolean userReactionLike) {
+    public ForumMessage(int id, String contenu, LocalDateTime dateMessage, boolean anonymous, String attachmentPath,
+                        String attachmentMimeType, Long attachmentSize, int idSujet, int idUser, String username,
+                        Integer parentMessageId, int likeCount, int dislikeCount, Boolean userReactionLike) {
         this.id = id;
         this.contenu = contenu;
         this.dateMessage = dateMessage;
