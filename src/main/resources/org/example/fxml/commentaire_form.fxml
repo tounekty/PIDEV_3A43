@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+          fx:controller="org.example.controller.CommentaireFormController" spacing="12" style="-fx-font-family: Arial;">
+        <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+    
+    <!-- Compte connecté (nom et email du profil) -->
+    <Label text="Publication en tant que" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+    <Label fx:id="connectedUserLabel" wrapText="true" style="-fx-text-fill: #29496f; -fx-font-size: 13;"/>
+    
+    <!-- Contenu du commentaire -->
+    <Label text="Commentaire" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+    <TextArea fx:id="contentArea" promptText="Votre commentaire (5-2000 caractères)" 
+              wrapText="true" prefHeight="120"/>
+    
+        <!-- Note -->
+        <Label text="Note (cliquez sur les étoiles)" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+        <HBox spacing="6" alignment="CENTER_LEFT">
+                <Button fx:id="star1Btn" text="★" onAction="#handleStar1" style="-fx-background-color: transparent; -fx-font-size: 24; -fx-padding: 2 2 2 2;"/>
+                <Button fx:id="star2Btn" text="★" onAction="#handleStar2" style="-fx-background-color: transparent; -fx-font-size: 24; -fx-padding: 2 2 2 2;"/>
+                <Button fx:id="star3Btn" text="★" onAction="#handleStar3" style="-fx-background-color: transparent; -fx-font-size: 24; -fx-padding: 2 2 2 2;"/>
+                <Button fx:id="star4Btn" text="★" onAction="#handleStar4" style="-fx-background-color: transparent; -fx-font-size: 24; -fx-padding: 2 2 2 2;"/>
+                <Button fx:id="star5Btn" text="★" onAction="#handleStar5" style="-fx-background-color: transparent; -fx-font-size: 24; -fx-padding: 2 2 2 2;"/>
+        </HBox>
+    
+    <!-- Note -->
+    <Label text="Votre commentaire sera publié immédiatement." 
+            style="-fx-text-fill: #2f6b2f; -fx-font-size: 11; -fx-font-style: italic;"/>
+    
+    <!-- Boutons -->
+    <HBox spacing="10" style="-fx-alignment: center;">
+        <Button fx:id="saveBtn" text="📤 Publier" onAction="#handleSave" 
+                style="-fx-padding: 10 30; -fx-font-weight: bold; -fx-font-size: 12; -fx-background-color: #28a745; -fx-text-fill: white;"/>
+        <Button fx:id="cancelBtn" text="❌ Annuler" onAction="#handleCancel" 
+                style="-fx-padding: 10 30; -fx-font-weight: bold; -fx-font-size: 12; -fx-background-color: #6c757d; -fx-text-fill: white;"/>
+    </HBox>
+</VBox>
