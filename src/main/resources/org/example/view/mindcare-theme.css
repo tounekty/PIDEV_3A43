@@ -1,0 +1,272 @@
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-background-color: #f3f4f6;
+}
+
+/* Main Container */
+.dashboard-container {
+    -fx-padding: 20px;
+}
+
+.dashboard-card, .card {
+    -fx-background-color: white;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 15, 0, 0, 4);
+}
+
+/* Titles */
+.title-text {
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #111827;
+}
+
+.subtitle-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #6b7280;
+}
+
+/* Search Box */
+.search-container, .search-bar {
+    -fx-background-color: #f9fafb;
+    -fx-background-radius: 10px;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 10px;
+    -fx-padding: 12px 16px;
+}
+
+.search-field, .text-field, .password-field, .combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #d1d5db;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px 12px;
+    -fx-text-fill: #111827;
+    -fx-prompt-text-fill: #9ca3af;
+    -fx-font-size: 14px;
+}
+
+/* Buttons */
+.btn {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 8px;
+    -fx-padding: 10px 20px;
+    -fx-cursor: hand;
+}
+
+.btn-primary {
+    -fx-background-color: #6366f1; /* Indigo 500 */
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.4), 8, 0, 0, 4);
+}
+.btn-primary:hover {
+    -fx-background-color: #4f46e5; /* Indigo 600 */
+}
+
+.btn-secondary {
+    -fx-background-color: white;
+    -fx-text-fill: #374151;
+    -fx-border-color: #d1d5db;
+    -fx-border-radius: 8px;
+}
+.btn-secondary:hover {
+    -fx-background-color: #f3f4f6;
+}
+
+.btn-danger {
+    -fx-background-color: #fef2f2;
+    -fx-text-fill: #dc2626;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 8px;
+}
+.btn-danger:hover {
+    -fx-background-color: #fee2e2;
+}
+
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: #6b7280;
+    -fx-padding: 10px 15px;
+}
+.btn-ghost:hover {
+    -fx-background-color: #f3f4f6;
+    -fx-text-fill: #111827;
+}
+
+/* Beautiful Table View */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-fixed-cell-size: 48px;
+}
+
+.admin-users-table {
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 18, 0, 0, 6);
+}
+
+.table-view .column-header-background {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #f3f4f6 transparent;
+    -fx-border-width: 0 0 2px 0;
+    -fx-padding: 0 0 5px 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 12px 10px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #9ca3af; /* Light gray headers */
+    -fx-font-weight: 800;
+    -fx-font-size: 12px;
+    -fx-text-transform: uppercase; /* Faux uppercase via font */
+}
+
+.admin-users-table .column-header .label {
+    -fx-text-fill: #475569;
+    -fx-font-size: 13px;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #f3f4f6 transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.table-view .table-row-cell:hover {
+    -fx-background-color: #f9fafb;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #e0e7ff; /* Indigo 100 */
+    -fx-border-color: transparent transparent #c7d2fe transparent;
+}
+
+.table-view .table-row-cell:selected .text {
+    -fx-fill: #3730a3; /* Indigo 800 */
+}
+
+.table-cell {
+    -fx-padding: 0 18px;
+    -fx-font-size: 14px;
+    -fx-text-fill: #111827;
+    -fx-alignment: center-left;
+}
+
+.admin-users-table .table-cell {
+    -fx-font-size: 15px;
+}
+
+.admin-users-table .table-row-cell {
+    -fx-background-insets: 0;
+}
+
+.admin-users-table .table-row-cell:odd {
+    -fx-background-color: #fcfcfd;
+}
+
+.admin-users-table .table-row-cell:even {
+    -fx-background-color: white;
+}
+
+.admin-stats-table {
+    -fx-background-color: white;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 16px;
+    -fx-background-radius: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.06), 14, 0, 0, 4);
+}
+
+.admin-stats-table .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2ff);
+    -fx-background-radius: 16px 16px 0 0;
+}
+
+.admin-stats-table .table-row-cell:hover {
+    -fx-background-color: #f8fafc;
+}
+
+.admin-stats-table .table-row-cell:selected {
+    -fx-background-color: #e0e7ff;
+}
+
+/* Error Label */
+.error-label {
+    -fx-text-fill: #dc2626; 
+    -fx-font-size: 13px; 
+    -fx-font-weight: bold; 
+    -fx-background-color: #fee2e2; 
+    -fx-padding: 10 16; 
+    -fx-background-radius: 8px;
+}
+
+/* Topbar */
+.topbar {
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 10, 0, 0, 2);
+}
+
+/* Admin Analytics Charts */
+.chart-pie {
+    -fx-padding: 0;
+}
+
+.chart-pie-label {
+    -fx-fill: #64748b;
+    -fx-font-size: 11px;
+}
+
+.chart-pie-label-line {
+    -fx-stroke: #cbd5e1;
+    -fx-stroke-width: 1px;
+}
+
+/* Vibrant colors for roles */
+.default-color0.chart-pie { -fx-pie-color: #6366f1; } /* Admin - Indigo */
+.default-color1.chart-pie { -fx-pie-color: #10b981; } /* Psychologist - Emerald */
+.default-color2.chart-pie { -fx-pie-color: #3b82f6; } /* Client - Blue */
+.default-color3.chart-pie { -fx-pie-color: #f59e0b; } /* Student - Amber */
+
+/* Line Chart Styling */
+.chart-series-line {
+    -fx-stroke-width: 4px;
+    -fx-stroke: #6366f1;
+}
+
+.chart-line-symbol {
+    -fx-background-color: #6366f1, white;
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 8px;
+    -fx-padding: 5px;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+
+.chart-horizontal-grid-lines {
+    -fx-stroke: #f1f5f9;
+}
+
+.axis {
+    -fx-tick-label-fill: #94a3b8;
+    -fx-font-size: 11px;
+}
+
+.axis-label {
+    -fx-text-fill: #64748b;
+}
+
+/* Stat Card Hover Effects */
+.stat-card:hover {
+    -fx-translate-y: -4px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 8);
+}
