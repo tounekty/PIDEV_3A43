@@ -11,6 +11,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.LineChart;
@@ -674,15 +675,13 @@ public class Main extends Application {
     }
 
     private VBox buildReservationsPage() {
-        VBox page = loadPage("ReservationsView.fxml");
-        initReservationsPage();
+        VBox page = new VBox();
+        page.setStyle("-fx-background-color: transparent;");
         return page;
     }
 
     private void initReservationsPage() {
-        if (reservationListView != null) {
-            reservationListView.setCellFactory(v -> new ReservationCell());
-        }
+        // Managed dynamically in loadReservations
     }
 
     private VBox buildForumPage() {
@@ -1316,6 +1315,34 @@ public class Main extends Application {
             }
 
             currentUser = user;
+
+            // Bridge to legacy SessionManager
+            com.mindcare.model.User legacyUser = new com.mindcare.model.User();
+            legacyUser.setId(user.getId());
+            legacyUser.setFirstName(user.getFirstName());
+            legacyUser.setLastName(user.getLastName());
+            legacyUser.setEmail(user.getEmail());
+            if ("admin".equalsIgnoreCase(user.getRole())) {
+                legacyUser.setRole(com.mindcare.model.User.Role.ADMIN);
+            } else if ("psychologue".equalsIgnoreCase(user.getRole())) {
+                legacyUser.setRole(com.mindcare.model.User.Role.PSYCHOLOGUE);
+            } else {
+                legacyUser.setRole(com.mindcare.model.User.Role.CLIENT);
+            }
+            com.mindcare.utils.SessionManager.getInstance().login(legacyUser);
+
+            com.mindcare.utils.NavigationManager.getInstance().setCustomNavigator((title, contentBuilder) -> {
+                javafx.scene.layout.VBox wrapper = new javafx.scene.layout.VBox();
+                javafx.scene.Node builtNode = contentBuilder.build();
+                wrapper.getChildren().add(builtNode);
+                javafx.scene.layout.VBox.setVgrow(builtNode, javafx.scene.layout.Priority.ALWAYS);
+                if (isBackOfficeUser(user)) {
+                    showAdminContentPage(wrapper, null);
+                } else {
+                    showPage(wrapper);
+                }
+            });
+
             applyRole();
             resetForm();
             loadEvents();
@@ -1689,12 +1716,21 @@ public class Main extends Application {
         }
         if (adminStatsNavButton != null) {
             adminStatsNavButton.setOnAction(e -> {
-                try {
-                    statsPage = buildStatsPageGlobal();
-                    showAdminContentPage(statsPage, null);
+                if (currentUser != null && "psychologue".equalsIgnoreCase(currentUser.getRole())) {
+                    javafx.scene.layout.VBox wrapper = new javafx.scene.layout.VBox();
+                    javafx.scene.Node content = new com.mindcare.legacy.psychologue.GestionRendezVousStatsLegacyContent().build();
+                    wrapper.getChildren().add(content);
+                    javafx.scene.layout.VBox.setVgrow(content, javafx.scene.layout.Priority.ALWAYS);
+                    showAdminContentPage(wrapper, null);
                     setActiveAdminNav(adminStatsNavButton);
-                } catch (SQLException ex) {
-                    showError("Erreur", ex.getMessage());
+                } else {
+                    try {
+                        statsPage = buildStatsPageGlobal();
+                        showAdminContentPage(statsPage, null);
+                        setActiveAdminNav(adminStatsNavButton);
+                    } catch (SQLException ex) {
+                        showError("Erreur", ex.getMessage());
+                    }
                 }
             });
         }
@@ -2389,8 +2425,29 @@ public class Main extends Application {
     }
 
     private void loadReservations() {
-        try { reservationListView.getItems().setAll(reservationService.getAllReservations()); }
-        catch (SQLException e) { reservationListView.getItems().clear(); showError("Chargement des reservations impossible", e.getMessage()); }
+        if (reservationsPage == null) return;
+        reservationsPage.getChildren().clear();
+        
+        if (currentUser != null) {
+            javafx.scene.Node content = null;
+            if ("admin".equalsIgnoreCase(currentUser.getRole())) {
+                content = new com.mindcare.legacy.admin.GestionReservationsLegacyContent().build();
+            } else if ("psychologue".equalsIgnoreCase(currentUser.getRole())) {
+                content = new com.mindcare.legacy.psychologue.GestionRendezVousLegacyContent().build();
+            } else {
+                content = new com.mindcare.legacy.client.ContractsLegacyContent().build();
+            }
+            if (content != null) {
+                if (content instanceof Parent parentNode) {
+                    String orionCss = getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm();
+                    if (!parentNode.getStylesheets().contains(orionCss)) {
+                        parentNode.getStylesheets().add(orionCss);
+                    }
+                }
+                javafx.scene.layout.VBox.setVgrow(content, javafx.scene.layout.Priority.ALWAYS);
+                reservationsPage.getChildren().add(content);
+            }
+        }
     }
 
     private void loadForumSubjects() {
