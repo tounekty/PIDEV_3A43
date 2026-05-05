@@ -6,9 +6,9 @@ import java.sql.SQLException;
 
 public final class MyDatabase {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/mindcare?useSSL=false&serverTimezone=UTC&zeroDateTimeBehavior=convertToNull";
+    private static final String URL = "jdbc:mysql://localhost:8889/moodtracker?useSSL=false&serverTimezone=UTC&zeroDateTimeBehavior=convertToNull";
     private static final String USER = "root";
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = "root";
 
     private static MyDatabase instance;
 

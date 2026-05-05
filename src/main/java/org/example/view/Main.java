@@ -40,6 +40,8 @@ import org.example.service.ForumAiRewriteService;
 import org.example.service.MentionNotificationResult;
 import org.example.service.MentionNotificationService;
 import org.example.service.ResourceService;
+import com.mindcare.view.client.MoodJournalView;
+import com.mindcare.view.client.JournalView;
 
 import java.io.File;
 import java.io.IOException;
@@ -115,6 +117,8 @@ public class Main extends Application {
     private VBox forumPage;
     private VBox subjectFormPage;
     private VBox messagesPage;
+    private VBox moodPage;
+    private VBox journalPage;
     private VBox statsPage;
     private VBox header;
     private Stage primaryStage;
@@ -130,6 +134,7 @@ public class Main extends Application {
     @FXML private Button adminForumNavButton;
     @FXML private Button adminResourcesNavButton;
     @FXML private Button adminStatsNavButton;
+    @FXML private Button adminMoodJournalNavButton;
 
     // Front-office navigation (left sidebar)
     private VBox frontNav;
@@ -137,6 +142,8 @@ public class Main extends Application {
     private Button frontEventsNavButton;
     private Button frontReservationsNavButton;
     private Button frontForumNavButton;
+    private Button frontMoodNavButton;
+    private Button frontJournalNavButton;
     private Button frontResourcesNavButton;
     private Button frontStatsNavButton;
     private Button activeFrontNavButton;
@@ -315,7 +322,16 @@ public class Main extends Application {
         }
         pageContainer.getChildren().setAll(loginPage);
         root.setCenter(pageContainer);
-        stage.setScene(new Scene(root, 1200, 760));
+        Scene scene = new Scene(root, 1200, 760);
+        try {
+            String css = getClass().getResource("/com/mindcare/styles/orion-theme.css").toExternalForm();
+            if (css != null) scene.getStylesheets().add(css);
+        } catch (Exception ignored) { }
+        try {
+            String eventsCss = getClass().getResource("/styles-events.css").toExternalForm();
+            if (eventsCss != null) scene.getStylesheets().add(eventsCss);
+        } catch (Exception ignored) { }
+        stage.setScene(scene);
         stage.setTitle("MindCare");
         stage.show();
         initializeDatabase();
@@ -330,10 +346,12 @@ public class Main extends Application {
         frontEventsNavButton = new Button("📅 Evenements");
         frontReservationsNavButton = new Button("✅ Reservations");
         frontForumNavButton = new Button("💬 Forum");
+        frontMoodNavButton = new Button("🙂 Mood Tracker");
+        frontJournalNavButton = new Button("📝 Journal");
         frontResourcesNavButton = new Button("📚 Ressources");
         frontStatsNavButton = new Button("📊 Statistiques");
 
-        for (Button b : List.of(frontHomeNavButton, frontEventsNavButton, frontReservationsNavButton, frontForumNavButton, frontResourcesNavButton, frontStatsNavButton)) {
+        for (Button b : List.of(frontHomeNavButton, frontEventsNavButton, frontReservationsNavButton, frontForumNavButton, frontMoodNavButton, frontJournalNavButton, frontResourcesNavButton, frontStatsNavButton)) {
             b.setAlignment(Pos.BASELINE_LEFT);
             b.setMaxWidth(Double.MAX_VALUE);
             b.setStyle(NAV_INACTIVE);
@@ -343,6 +361,8 @@ public class Main extends Application {
         frontEventsNavButton.setOnAction(e -> { loadEvents(); showPage(eventsPage); setActiveFrontNav(frontEventsNavButton); });
         frontReservationsNavButton.setOnAction(e -> { loadReservations(); showPage(reservationsPage); setActiveFrontNav(frontReservationsNavButton); });
         frontForumNavButton.setOnAction(e -> { loadForumSubjects(); showPage(forumPage); setActiveFrontNav(frontForumNavButton); });
+        frontMoodNavButton.setOnAction(e -> { openMoodTrackerInMainWindow(); setActiveFrontNav(frontMoodNavButton); });
+        frontJournalNavButton.setOnAction(e -> { openJournalInMainWindow(); setActiveFrontNav(frontJournalNavButton); });
         frontResourcesNavButton.setOnAction(e -> { openResourcesInMainWindow(); setActiveFrontNav(frontResourcesNavButton); });
         frontStatsNavButton.setOnAction(e -> {
             try {
@@ -360,6 +380,8 @@ public class Main extends Application {
                 frontEventsNavButton,
                 frontReservationsNavButton,
                 frontForumNavButton,
+                frontMoodNavButton,
+                frontJournalNavButton,
                 frontResourcesNavButton,
                 frontStatsNavButton
         );
@@ -406,10 +428,56 @@ public class Main extends Application {
             setActiveFrontNav(frontReservationsNavButton);
         } else if (page == forumPage || page == subjectFormPage || page == messagesPage) {
             setActiveFrontNav(frontForumNavButton);
+        } else if (page == moodPage) {
+            setActiveFrontNav(frontMoodNavButton);
+        } else if (page == journalPage) {
+            setActiveFrontNav(frontJournalNavButton);
         } else if (page == statsPage) {
             setActiveFrontNav(frontStatsNavButton);
         }
         // Resources view is loaded as Node wrapper; selection handled by the action.
+    }
+
+    private void openMoodTrackerInMainWindow() {
+        try {
+            Node rootNode = new MoodJournalView(MoodJournalView.InitialTab.MOOD).build();
+            if (rootNode == null) {
+                return;
+            }
+            VBox wrapper = new VBox(rootNode);
+            VBox.setVgrow(rootNode, Priority.ALWAYS);
+            wrapper.setFillWidth(true);
+            wrapper.setStyle("-fx-background-color: #eff6ff;");
+            moodPage = wrapper;
+            showPage(wrapper);
+        } catch (Exception e) {
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null) {
+                rootCause = rootCause.getCause();
+            }
+            showError("Erreur", "Impossible d'ouvrir Mood Tracker: " + rootCause.getMessage());
+        }
+    }
+
+    private void openJournalInMainWindow() {
+        try {
+            Node rootNode = new MoodJournalView(MoodJournalView.InitialTab.JOURNAL).build();
+            if (rootNode == null) {
+                return;
+            }
+            VBox wrapper = new VBox(rootNode);
+            VBox.setVgrow(rootNode, Priority.ALWAYS);
+            wrapper.setFillWidth(true);
+            wrapper.setStyle("-fx-background-color: #eff6ff;");
+            journalPage = wrapper;
+            showPage(wrapper);
+        } catch (Exception e) {
+            Throwable rootCause = e;
+            while (rootCause.getCause() != null) {
+                rootCause = rootCause.getCause();
+            }
+            showError("Erreur", "Impossible d'ouvrir Journal: " + rootCause.getMessage());
+        }
     }
 
     private void setActiveAdminNav(Button button) {
@@ -424,7 +492,8 @@ public class Main extends Application {
                 adminReservationsNavButton,
                 adminForumNavButton,
                 adminResourcesNavButton,
-                adminStatsNavButton
+                adminStatsNavButton,
+                adminMoodJournalNavButton
         );
         for (Button navButton : adminButtons) {
             if (navButton != null) {
@@ -500,27 +569,16 @@ public class Main extends Application {
     }
 
     private VBox buildEventsPage() {
-        VBox page = loadPage("EventsView.fxml");
-        initEventsPage();
-        return page;
+        VBox wrapper = new VBox();
+        wrapper.setFillWidth(true);
+        wrapper.setMaxHeight(Double.MAX_VALUE);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        wrapper.setStyle("-fx-background-color:#F8F9FA;");
+        return wrapper;
     }
 
     private void initEventsPage() {
-        if (eventListView != null) {
-            eventListView.setCellFactory(v -> new EventCell());
-        }
-        if (searchField != null) {
-            searchField.textProperty().addListener((obs, oldText, newText) -> loadEvents());
-            searchField.setMaxWidth(320);
-        }
-        if (sortField != null) {
-            if (sortField.getItems().isEmpty()) {
-                sortField.setItems(FXCollections.observableArrayList("Par defaut", "Date", "Capacite", "Categorie", "Lieu"));
-            }
-            sortField.setValue("Par defaut");
-            sortField.setOnAction(e -> loadEvents());
-            sortField.setMaxWidth(180);
-        }
+        // No-op: events page is rebuilt dynamically in loadEvents()
     }
 
     private VBox buildStatsPageGlobal() throws SQLException {
@@ -1343,15 +1401,17 @@ public class Main extends Application {
                 }
             });
 
-            applyRole();
-            resetForm();
-            loadEvents();
-            loadReservations();
-            loadForumSubjects();
-            updateHomePageStats();
+            // Wrap each module load in try-catch so a single failing module
+            // (e.g. legacy schema mismatch) doesn't break the entire login flow.
+            try { applyRole(); } catch (Exception ex) { ex.printStackTrace(); }
+            try { resetForm(); } catch (Exception ex) { ex.printStackTrace(); }
+            try { loadEvents(); } catch (Exception ex) { ex.printStackTrace(); }
+            try { loadReservations(); } catch (Exception ex) { ex.printStackTrace(); }
+            try { loadForumSubjects(); } catch (Exception ex) { ex.printStackTrace(); }
+            try { updateHomePageStats(); } catch (Exception ex) { ex.printStackTrace(); }
             if (isBackOfficeUser(user)) {
-                loadAdminUsers();
-                resetAdminUserForm();
+                try { loadAdminUsers(); } catch (Exception ex) { ex.printStackTrace(); }
+                try { resetAdminUserForm(); } catch (Exception ex) { ex.printStackTrace(); }
             }
 
             if (loginErrorLabel != null) {
@@ -1483,8 +1543,12 @@ public class Main extends Application {
         forumHeaderButton.setVisible(false); forumHeaderButton.setManaged(false);
         resourcesHeaderButton.setVisible(false); resourcesHeaderButton.setManaged(false);
         statsHeaderButton.setVisible(false); statsHeaderButton.setManaged(false);
-        eventsTitle.setText(backOffice ? "Back office des evenements" : "Catalogue des evenements");
-        eventsSubtitle.setText(backOffice ? "Admin/Psy peut modifier, supprimer et suivre les reservations." : "L'etudiant consulte les evenements avec photo et peut reserver.");
+        if (eventsTitle != null) {
+            eventsTitle.setText(backOffice ? "Back office des evenements" : "Catalogue des evenements");
+        }
+        if (eventsSubtitle != null) {
+            eventsSubtitle.setText(backOffice ? "Admin/Psy peut modifier, supprimer et suivre les reservations." : "L'etudiant consulte les evenements avec photo et peut reserver.");
+        }
     }
 
     private boolean isBackOfficeUser(User user) {
@@ -1644,20 +1708,31 @@ public class Main extends Application {
     }
 
     private void showLandingPageForUser(User user) {
+        if (isBackOfficeUser(user)) {
+            // Admin: directly force the admin dashboard into the page container,
+            // bypassing all conditional logic in showPage().
+            if (adminDashboardPage != null) {
+                pageContainer.getChildren().setAll(adminDashboardPage);
+                // Populate the center content pane with stats page
+                if (adminContentPane != null && adminDashboardStatsPage != null) {
+                    setAdminContent(adminDashboardStatsPage);
+                }
+                // Update stats in background — any failure here is non-fatal
+                try { updateAdminDashboardStats(); } catch (Exception ignored) {}
+            } else {
+                // Fallback: show events inside page container
+                loadEvents();
+                pageContainer.getChildren().setAll(eventsPage);
+            }
+            return;
+        }
+        // Front-office (student / psychologue)
         try {
             VBox landingPage = getLandingPageForUser(user);
-            if (landingPage == null) {
-                throw new IllegalStateException("Landing page is not initialized.");
-            }
+            if (landingPage == null) landingPage = homePage != null ? homePage : eventsPage;
             showPage(landingPage);
-            if (isBackOfficeUser(user)) {
-                updateAdminDashboardStats();
-            } else {
-                syncFrontNavForPage(landingPage);
-            }
+            syncFrontNavForPage(landingPage);
         } catch (RuntimeException ex) {
-            // Keep login usable even if one view fails to load.
-            showError("Impossible de charger HomeView", ex.getMessage());
             loadEvents();
             showPage(eventsPage);
         }
@@ -1692,7 +1767,19 @@ public class Main extends Application {
         }
         if (adminEventsNavButton != null) {
             adminEventsNavButton.setOnAction(e -> {
-                showAdminContentPage(eventsPage, this::loadEvents);
+                if (adminContentPane != null) {
+                    try {
+                        javafx.scene.Node evNode = new org.example.view.EventsModuleView(currentUser).build();
+                        if (evNode instanceof javafx.scene.layout.Region r) {
+                            r.setMaxHeight(Double.MAX_VALUE);
+                            r.setMaxWidth(Double.MAX_VALUE);
+                        }
+                        adminContentPane.getChildren().setAll(evNode);
+                        javafx.scene.layout.StackPane.setAlignment(evNode, javafx.geometry.Pos.TOP_LEFT);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
                 setActiveAdminNav(adminEventsNavButton);
             });
         }
@@ -1735,6 +1822,16 @@ public class Main extends Application {
             });
         }
         
+        if (adminMoodJournalNavButton != null) {
+            adminMoodJournalNavButton.setOnAction(e -> {
+                Node moodJournalNode = new org.example.view.AdminMoodJournalView().build();
+                if (adminContentPane != null) {
+                    adminContentPane.getChildren().setAll(moodJournalNode);
+                }
+                setActiveAdminNav(adminMoodJournalNavButton);
+            });
+        }
+
         if (adminContentPane != null) {
             setAdminContent(adminDashboardStatsPage != null ? adminDashboardStatsPage : adminUsersListPage);
             loadAdminUsers();
@@ -2414,14 +2511,21 @@ public class Main extends Application {
     }
 
     private void loadEvents() {
+        if (eventsPage == null) return;
         try {
-            reservationCounts.clear(); reservationCounts.putAll(reservationService.getReservationCountsByEvent());
-            reservedEventIds.clear();
-            if (currentUser != null && !currentUser.isAdmin()) reservedEventIds.addAll(reservationService.getReservedEventIdsByUser(currentUser.getId()));
-            String query = searchField == null ? null : searchField.getText().trim();
-            String sortBy = sortField == null ? null : sortField.getValue();
-            eventListView.getItems().setAll(eventService.getEvents(query, sortBy));
-        } catch (SQLException e) { eventListView.getItems().clear(); showError("Chargement impossible", e.getMessage()); }
+            javafx.scene.Node eventsNode =
+                    new org.example.view.EventsModuleView(currentUser).build();
+            eventsPage.getChildren().setAll(eventsNode);
+            eventsPage.setFillWidth(true);
+            VBox.setVgrow(eventsNode, Priority.ALWAYS);
+            if (eventsNode instanceof javafx.scene.layout.Region r) {
+                r.setMaxHeight(Double.MAX_VALUE);
+                r.setMaxWidth(Double.MAX_VALUE);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Chargement impossible", e.getMessage());
+        }
     }
 
     private void loadReservations() {

@@ -15,6 +15,9 @@ public class Event {
     private String title;
     private LocalDateTime eventDate;
     private String location;
+    private String status;
+    private int durationMinutes;
+    private double overbookingPercentage; // % de surbooking autorisé (ex: 10 = +10%)
 
     public Event() {
     }
@@ -32,6 +35,8 @@ public class Event {
         this.title = titre;
         this.eventDate = dateEvent;
         this.location = lieu;
+        this.status = "ACTIVE";
+        this.durationMinutes = 60;
     }
 
     public Event(int id, Integer idUser, String titre, String description, LocalDateTime dateEvent, String lieu,
@@ -48,6 +53,21 @@ public class Event {
         this.title = title;
         this.eventDate = eventDate;
         this.location = location;
+        this.status = "ACTIVE";
+        this.durationMinutes = 60;
+    }
+
+    public Event(int id, Integer idUser, String titre, String description, LocalDateTime dateEvent, String lieu,
+                 int capacite, String categorie, String image, String title, LocalDateTime eventDate, String location, String status) {
+        this(id, idUser, titre, description, dateEvent, lieu, capacite, categorie, image, title, eventDate, location);
+        this.status = status == null || status.isBlank() ? "ACTIVE" : status;
+    }
+
+    public Event(int id, Integer idUser, String titre, String description, LocalDateTime dateEvent, String lieu,
+                 int capacite, String categorie, String image, String title, LocalDateTime eventDate, String location,
+                 String status, int durationMinutes) {
+        this(id, idUser, titre, description, dateEvent, lieu, capacite, categorie, image, title, eventDate, location, status);
+        this.durationMinutes = durationMinutes <= 0 ? 60 : durationMinutes;
     }
 
     public int getId() {
@@ -144,5 +164,33 @@ public class Event {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(int durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public double getOverbookingPercentage() {
+        return overbookingPercentage;
+    }
+
+    public void setOverbookingPercentage(double overbookingPercentage) {
+        // Valider que le pourcentage est entre 0 et 100
+        if (overbookingPercentage < 0 || overbookingPercentage > 100) {
+            throw new IllegalArgumentException("Le surbooking doit être entre 0 et 100%");
+        }
+        this.overbookingPercentage = overbookingPercentage;
     }
 }

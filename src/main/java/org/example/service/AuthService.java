@@ -34,6 +34,12 @@ public class AuthService {
             authRepository.save("admin", "admin@mindcare.com", "Admin", "System", hashedPassword, "ADMIN", true, null, null);
             System.out.println("✅ Admin user created: admin / admin123");
         }
+        // Always ensure demo accounts are verified (in case they were seeded before verification was enabled)
+        try (var conn = org.example.config.DatabaseConnection.getConnection();
+             var ps = conn.prepareStatement(
+                "UPDATE users SET email_verified = 1 WHERE username IN ('admin','etudiant') AND email_verified = 0")) {
+            ps.executeUpdate();
+        }
 
         if (!authRepository.existsByUsername("etudiant")) {
             String hashedPassword = BCrypt.hashpw("etud123", BCrypt.gensalt());

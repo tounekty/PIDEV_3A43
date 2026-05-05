@@ -2,11 +2,11 @@ package com.mindcare.legacy.auth;
 
 import com.mindcare.view.auth.*;
 
-import com.mindcare.dao.DataAccessException;
-import com.mindcare.dao.UserDAO;
-import com.mindcare.model.User;
 import com.mindcare.utils.NavigationManager;
-import javafx.geometry.Insets;
+import org.example.controller.AuthController;
+
+import java.sql.SQLException;
+
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -17,7 +17,7 @@ import javafx.scene.layout.*;
  */
 public class RegisterLegacyContent implements NavigationManager.Buildable {
 
-    private final UserDAO userDAO = new UserDAO();
+    private final AuthController authController = new AuthController();
 
     @Override
     public Node build() {
@@ -93,29 +93,16 @@ public class RegisterLegacyContent implements NavigationManager.Buildable {
                 return;
             }
 
-            User user = new User();
-            user.setFirstName(firstName);
-            user.setLastName(lastName);
-            user.setEmail(email);
-            user.setUsername(buildUsername(firstName, lastName));
-            user.setRole(roleBox.getValue().startsWith("Psychologue") ? User.Role.PSYCHOLOGUE : User.Role.CLIENT);
-            user.setStatus(User.Status.ACTIVE);
+            String role = roleBox.getValue().startsWith("Psychologue") ? "PSYCHOLOGUE" : "CLIENT";
 
             try {
-                if (userDAO.getUserByEmail(email) != null) {
-                    showError(errorLabel, "An account with this email already exists.");
-                    return;
-                }
-                if (userDAO.insertUser(user)) {
-                    errorLabel.setText("Registration successful. You can sign in now.");
-                    errorLabel.setStyle("-fx-text-fill: #10B981; -fx-font-size: 12px;");
-                    errorLabel.setVisible(true);
-                    NavigationManager.getInstance().navigateTo(new LoginView());
-                } else {
-                    showError(errorLabel, "Registration failed. Please try again.");
-                }
-            } catch (DataAccessException exception) {
-                showError(errorLabel, "Database error: unable to register now.");
+                authController.register(email, firstName, lastName, password, role);
+                errorLabel.setText("Registration successful! Check your email for the confirmation code.");
+                errorLabel.setStyle("-fx-text-fill: #10B981; -fx-font-size: 12px;");
+                errorLabel.setVisible(true);
+                submitBtn.setDisable(true);
+            } catch (SQLException ex) {
+                showError(errorLabel, "Registration failed: " + ex.getMessage());
             }
         });
 
@@ -160,10 +147,6 @@ public class RegisterLegacyContent implements NavigationManager.Buildable {
         VBox box = new VBox(6, lbl, field);
         VBox.setVgrow(box, Priority.ALWAYS);
         return box;
-    }
-
-    private String buildUsername(String firstName, String lastName) {
-        return (firstName + "." + lastName).toLowerCase().replaceAll("\\s+", "");
     }
 
     private void showError(Label label, String message) {

@@ -2,9 +2,7 @@ package com.mindcare.legacy.auth;
 
 import com.mindcare.view.auth.*;
 
-import com.mindcare.dao.DataAccessException;
-import com.mindcare.dao.UserDAO;
-import com.mindcare.model.User;
+import org.example.model.User;
 import com.mindcare.service.MockDataService;
 import com.mindcare.utils.NavigationManager;
 import com.mindcare.utils.SessionManager;
@@ -16,15 +14,18 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import org.example.controller.AuthController;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
+
+import java.sql.SQLException;
 
 /**
  * LoginLegacyContent - the entry screen for the MindCare platform.
  */
 public class LoginLegacyContent implements NavigationManager.Buildable {
 
-    private final UserDAO userDAO = new UserDAO();
+    private final AuthController authController = new AuthController();
 
     @Override
     public Node build() {
@@ -165,9 +166,9 @@ public class LoginLegacyContent implements NavigationManager.Buildable {
         return btn;
     }
 
-    private void quickLogin(User user) {
+    private void quickLogin(com.mindcare.model.User user) {
         SessionManager.getInstance().login(user);
-        redirectToRole(user.getRole());
+        redirectToRole(String.valueOf(user.getRole()));
     }
 
     private void handleLogin(String email, String password, Label errorLabel) {
@@ -177,34 +178,62 @@ public class LoginLegacyContent implements NavigationManager.Buildable {
             return;
         }
         try {
-            User user = userDAO.authenticate(email.trim(), password);
+            User user = authController.login(email.trim(), password);
             if (user == null) {
                 errorLabel.setText("Invalid email or password.");
                 errorLabel.setVisible(true);
                 return;
             }
-            if (user.getStatus() == User.Status.BLOCKED) {
-                errorLabel.setText("This account is blocked. Contact support.");
-                errorLabel.setVisible(true);
-                return;
-            }
 
             errorLabel.setVisible(false);
-            SessionManager.getInstance().login(user);
+            com.mindcare.model.User legacyUser = convertToLegacyUser(user);
+            SessionManager.getInstance().login(legacyUser);
             redirectToRole(user.getRole());
-        } catch (DataAccessException exception) {
-            errorLabel.setText("Database error: unable to sign in right now.");
+        } catch (SQLException e) {
+            String msg = e.getMessage();
+            if (msg.contains("non activé") || msg.contains("votre email")) {
+                errorLabel.setText("Account not activated. Check your email for the confirmation code.");
+            } else if (msg.contains("banni")) {
+                errorLabel.setText("This account is blocked. Contact support.");
+            } else {
+                errorLabel.setText("Login failed: " + msg);
+            }
             errorLabel.setVisible(true);
         }
     }
 
-    private void redirectToRole(User.Role role) {
+    private void redirectToRole(String role) {
         NavigationManager nav = NavigationManager.getInstance();
-        switch (role) {
-            case CLIENT      -> nav.navigateContent("Prenez un rendez-vous",       () -> new ContractsView().build());
-            case PSYCHOLOGUE      -> nav.navigateContent("Dashboard",       () -> new PsychologueDashboardView().build());
-            case ADMIN       -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
-            case SUPER_ADMIN -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
+        String r = role != null ? role.toUpperCase() : "CLIENT";
+        switch (r) {
+            case "CLIENT", "ETUDIANT" -> nav.navigateContent("Prenez un rendez-vous", () -> new ContractsView().build());
+            case "PSYCHOLOGUE" -> nav.navigateContent("Dashboard", () -> new PsychologueDashboardView().build());
+            case "ADMIN", "SUPER_ADMIN" -> nav.navigateContent("Gestion User", () -> new GestionUserView().build());
+            default -> nav.navigateContent("Prenez un rendez-vous", () -> new ContractsView().build());
         }
+    }
+
+    private com.mindcare.model.User convertToLegacyUser(User user) {
+        com.mindcare.model.User legacyUser = new com.mindcare.model.User();
+        legacyUser.setId(user.getId());
+        legacyUser.setUsername(user.getUsername());
+        legacyUser.setEmail(user.getEmail());
+        legacyUser.setFirstName(user.getFirstName());
+        legacyUser.setLastName(user.getLastName());
+        legacyUser.setRole(convertRole(user.getRole()));
+        legacyUser.setStatus(com.mindcare.model.User.Status.ACTIVE);
+        legacyUser.setCreatedAt("");
+        return legacyUser;
+    }
+
+    private com.mindcare.model.User.Role convertRole(String role) {
+        if (role == null) return com.mindcare.model.User.Role.CLIENT;
+        return switch (role.toUpperCase()) {
+            case "ADMIN" -> com.mindcare.model.User.Role.ADMIN;
+            case "SUPER_ADMIN" -> com.mindcare.model.User.Role.SUPER_ADMIN;
+            case "PSYCHOLOGUE" -> com.mindcare.model.User.Role.PSYCHOLOGUE;
+            case "ETUDIANT", "CLIENT" -> com.mindcare.model.User.Role.CLIENT;
+            default -> com.mindcare.model.User.Role.CLIENT;
+        };
     }
 }

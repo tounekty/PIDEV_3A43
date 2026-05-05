@@ -80,6 +80,13 @@ public class SidebarComponent extends VBox {
             addItem(menu, "Gestion Commentaires", Feather.BRIEFCASE,      "Gestion Commentaires", this::buildClientDisabledContent);
             addItem(menu, "Offers Received",  Feather.INBOX,          "Offers Received",  this::buildClientDisabledContent);
             addItem(menu, "Prenez un rendez-vous",        Feather.FILE_TEXT,      "Prenez un rendez-vous",        () -> new ContractsView().build());
+            addSection(menu, "MODULES");
+            addItem(menu, "Mood Journal",     Feather.SUN,            "Mood Journal",     () -> new MoodJournalView().build());
+            addItem(menu, "Journal",          Feather.EDIT_3,         "Journal",          () -> new JournalView().build());
+            addItem(menu, "Events",           Feather.CALENDAR,       "Events",           () -> new EventsView().build());
+            addItem(menu, "Forum",            Feather.MESSAGE_SQUARE,  "Forum",            () -> new ForumView().build());
+            addItem(menu, "Resources",        Feather.BOOK_OPEN,      "Resources",        () -> new ResourcesView().build());
+            addItem(menu, "Statistics",       Feather.BAR_CHART_2,    "Statistics",       () -> new StatsView().build());
             addSection(menu, "COMMUNICATION");
             addItem(menu, "Messages",         Feather.MESSAGE_CIRCLE, "Messages",         this::buildClientDisabledContent);
             addSection(menu, "ACCOUNT");

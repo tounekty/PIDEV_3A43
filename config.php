@@ -6,12 +6,12 @@ class Database {
     private $host = "localhost";
     private $username = "root";
     private $password = "";
-    private $dbname = "skillcraft_bd";
+    private $dbname = "moodtracker";
 
     private function __construct() {
         try {
             $this->connection = new PDO(
-                "mysql:host=$this->host;dbname=$this->dbname",
+                "mysql:host=$this->host;port=3307;dbname=$this->dbname",
                 $this->username,
                 $this->password
             );
