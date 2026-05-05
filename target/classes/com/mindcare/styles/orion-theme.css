@@ -1,6 +1,31 @@
 .root {
     -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    -fx-background-color: #f3f4f6;
+    -fx-background-color: white;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* ScrollPane */
+.scroll-pane {
+    -fx-background-color: white;
+    -fx-padding: 0;
+}
+
+.scroll-pane:focused {
+    -fx-background-color: white;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: white;
+}
+
+/* VBox Focus Fix */
+.vbox {
+    -fx-background-color: white;
+}
+
+.vbox:focused {
+    -fx-background-color: white;
 }
 
 /* Main Container */
@@ -76,13 +101,15 @@
 }
 
 .btn-secondary {
-    -fx-background-color: white;
-    -fx-text-fill: #374151;
-    -fx-border-color: #d1d5db;
+    -fx-background-color: #0369a1;
+    -fx-text-fill: white;
+    -fx-border-color: #0369a1;
     -fx-border-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(3,105,161,0.3), 6, 0, 0, 2);
 }
 .btn-secondary:hover {
-    -fx-background-color: #f3f4f6;
+    -fx-background-color: #0c4a6e;
+    -fx-border-color: #0c4a6e;
 }
 
 .btn-success {
@@ -104,13 +131,15 @@
 }
 
 .btn-outline {
-    -fx-background-color: transparent;
-    -fx-text-fill: #374151;
-    -fx-border-color: #d1d5db;
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: white;
+    -fx-border-color: #7c3aed;
     -fx-border-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(124,58,237,0.3), 6, 0, 0, 2);
 }
 .btn-outline:hover {
-    -fx-background-color: #f9fafb;
+    -fx-background-color: #6d28d9;
+    -fx-border-color: #6d28d9;
 }
 
 .btn-sm {
