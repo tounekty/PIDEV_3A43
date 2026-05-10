@@ -1,0 +1,19 @@
+package com.mindcare.view.auth;
+
+import com.mindcare.utils.NavigationManager;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
+
+import java.io.IOException;
+
+public class ForgotPasswordView implements NavigationManager.Buildable {
+
+    @Override
+    public Node build() {
+        try {
+            return FXMLLoader.load(getClass().getResource("/com/mindcare/view/auth/ForgotPasswordView.fxml"));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to load ForgotPasswordView.fxml", exception);
+        }
+    }
+}
