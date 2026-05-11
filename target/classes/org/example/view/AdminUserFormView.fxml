@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+
+<!-- Root MUST be VBox — Java controller casts loadPage() result to VBox -->
+<VBox xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      VBox.vgrow="ALWAYS"
+      style="-fx-background-color: #f1f5f9;">
+    <stylesheets>
+        <URL value="@mindcare-theme.css" />
+    </stylesheets>
+
+    <!-- Inner ScrollPane so content is never clipped -->
+    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS"
+                style="-fx-background-color: transparent; -fx-background: transparent;">
+        <content>
+            <VBox spacing="0" style="-fx-padding: 32;">
+
+                <!-- ═══ PAGE HEADER ═══ -->
+                <HBox alignment="CENTER_LEFT" spacing="16" style="-fx-padding: 0 0 24 0;">
+                    <Button fx:id="adminBackToListButton" text="← Back to Users"
+                            style="-fx-background-color: white; -fx-text-fill: #475569;
+                                   -fx-font-weight: 700; -fx-font-size: 13px; -fx-cursor: hand;
+                                   -fx-background-radius: 10; -fx-border-radius: 10;
+                                   -fx-border-color: #e2e8f0; -fx-border-width: 1;
+                                   -fx-padding: 10 18 10 18;
+                                   -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 2);" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <VBox alignment="CENTER_RIGHT" spacing="3">
+                        <Label fx:id="adminUserFormTitle" text="Edit User Profile"
+                               style="-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #0f172a;" />
+                        <Label text="Update account information and permissions"
+                               style="-fx-font-size: 13px; -fx-text-fill: #64748b;" />
+                    </VBox>
+                </HBox>
+
+                <!-- ═══ MAIN FORM CARD ═══ -->
+                <VBox spacing="24"
+                      style="-fx-background-color: white;
+                             -fx-background-radius: 18; -fx-border-radius: 18;
+                             -fx-border-color: #e2e8f0; -fx-border-width: 1;
+                             -fx-padding: 36;
+                             -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.08), 24, 0, 0, 8);">
+
+                    <!-- ─── Section: Personal Info ─── -->
+                    <VBox spacing="4">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="▌" style="-fx-text-fill: #6366f1; -fx-font-size: 20px;" />
+                            <VBox spacing="1">
+                                <Label text="Personal Information"
+                                       style="-fx-font-size: 15px; -fx-font-weight: 800; -fx-text-fill: #1e293b;" />
+                                <Label text="Basic identity details shown across the platform."
+                                       style="-fx-font-size: 12px; -fx-text-fill: #94a3b8;" />
+                            </VBox>
+                        </HBox>
+
+                        <GridPane hgap="20" vgap="16" style="-fx-padding: 12 0 0 16;">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="50" />
+                                <ColumnConstraints percentWidth="50" />
+                            </columnConstraints>
+
+
+
+                            <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                                <Label text="Email Address"
+                                       style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                                <TextField fx:id="adminEmailField" promptText="name@example.com"
+                                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                  -fx-border-radius: 10; -fx-background-radius: 10;
+                                                  -fx-border-width: 1.5; -fx-padding: 12 14;
+                                                  -fx-font-size: 14px; -fx-text-fill: #0f172a;" />
+                            </VBox>
+
+                            <VBox spacing="6" GridPane.rowIndex="1" GridPane.columnIndex="0">
+                                <Label text="First Name"
+                                       style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                                <TextField fx:id="adminFirstNameField" promptText="First name"
+                                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                  -fx-border-radius: 10; -fx-background-radius: 10;
+                                                  -fx-border-width: 1.5; -fx-padding: 12 14;
+                                                  -fx-font-size: 14px; -fx-text-fill: #0f172a;" />
+                            </VBox>
+
+                            <VBox spacing="6" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                                <Label text="Last Name"
+                                       style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                                <TextField fx:id="adminLastNameField" promptText="Last name"
+                                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                  -fx-border-radius: 10; -fx-background-radius: 10;
+                                                  -fx-border-width: 1.5; -fx-padding: 12 14;
+                                                  -fx-font-size: 14px; -fx-text-fill: #0f172a;" />
+                            </VBox>
+                        </GridPane>
+                    </VBox>
+
+                    <Separator />
+
+                    <!-- ─── Section: Access Control ─── -->
+                    <VBox spacing="4">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="▌" style="-fx-text-fill: #f59e0b; -fx-font-size: 20px;" />
+                            <VBox spacing="1">
+                                <Label text="Access &amp; Permissions"
+                                       style="-fx-font-size: 15px; -fx-font-weight: 800; -fx-text-fill: #1e293b;" />
+                                <Label text="Control role privileges and account standing."
+                                       style="-fx-font-size: 12px; -fx-text-fill: #94a3b8;" />
+                            </VBox>
+                        </HBox>
+
+                        <GridPane hgap="20" vgap="16" style="-fx-padding: 12 0 0 16;">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="50" />
+                                <ColumnConstraints percentWidth="50" />
+                            </columnConstraints>
+
+                            <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                                <Label text="Role"
+                                       style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                                <ComboBox fx:id="adminRoleField" maxWidth="Infinity"
+                                          style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                 -fx-border-radius: 10; -fx-background-radius: 10;
+                                                 -fx-border-width: 1.5; -fx-font-size: 14px;" />
+                            </VBox>
+
+                            <VBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                                <Label text="Banned Until"
+                                       style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                                <DatePicker fx:id="adminBannedUntilField"
+                                            promptText="Leave empty — user is active"
+                                            maxWidth="Infinity"
+                                            style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                   -fx-border-radius: 10; -fx-background-radius: 10;
+                                                   -fx-border-width: 1.5; -fx-font-size: 14px;" />
+                            </VBox>
+                        </GridPane>
+                    </VBox>
+
+                    <Separator />
+
+                    <!-- ─── Section: Security ─── -->
+                    <VBox spacing="4">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="▌" style="-fx-text-fill: #10b981; -fx-font-size: 20px;" />
+                            <VBox spacing="1">
+                                <Label text="Security"
+                                       style="-fx-font-size: 15px; -fx-font-weight: 800; -fx-text-fill: #1e293b;" />
+                                <Label text="Leave blank to keep the current password unchanged."
+                                       style="-fx-font-size: 12px; -fx-text-fill: #94a3b8;" />
+                            </VBox>
+                        </HBox>
+
+                        <VBox spacing="6" style="-fx-padding: 12 0 0 16;">
+                            <Label text="New Password"
+                                   style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #475569;" />
+                            <PasswordField fx:id="adminPasswordField"
+                                           promptText="Leave blank to keep existing password"
+                                           style="-fx-background-color: #f8fafc; -fx-border-color: #e2e8f0;
+                                                  -fx-border-radius: 10; -fx-background-radius: 10;
+                                                  -fx-border-width: 1.5; -fx-padding: 12 14;
+                                                  -fx-font-size: 14px; -fx-text-fill: #0f172a;" />
+                        </VBox>
+                    </VBox>
+
+                    <!-- ─── Error Label ─── -->
+                    <Label fx:id="adminUserFormErrorLabel" visible="false" managed="false"
+                           wrapText="true"
+                           style="-fx-text-fill: #b91c1c; -fx-font-size: 13px; -fx-font-weight: 700;
+                                  -fx-background-color: #fef2f2; -fx-padding: 14 18;
+                                  -fx-background-radius: 10; -fx-border-color: #fecaca;
+                                  -fx-border-radius: 10; -fx-border-width: 1;"
+                           maxWidth="Infinity" />
+
+                    <!-- ─── Action Buttons ─── -->
+                    <HBox spacing="12" alignment="CENTER_RIGHT" style="-fx-padding: 8 0 0 0;">
+                        <Button fx:id="adminResetUserButton" text="↺  Clear Form"
+                                style="-fx-background-color: white; -fx-text-fill: #64748b;
+                                       -fx-font-weight: 700; -fx-font-size: 13px; -fx-cursor: hand;
+                                       -fx-background-radius: 10; -fx-border-radius: 10;
+                                       -fx-border-color: #e2e8f0; -fx-border-width: 1;
+                                       -fx-padding: 12 24;" />
+
+                        <Button fx:id="adminSaveUserButton" text="Save Changes"
+                                style="-fx-background-color: #6366f1; -fx-text-fill: white;
+                                       -fx-font-weight: 800; -fx-font-size: 14px; -fx-cursor: hand;
+                                       -fx-background-radius: 10; -fx-border-radius: 10;
+                                       -fx-padding: 12 32;
+                                       -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.45), 12, 0, 0, 5);" />
+                    </HBox>
+
+                </VBox>
+            </VBox>
+        </content>
+    </ScrollPane>
+</VBox>
