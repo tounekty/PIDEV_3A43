@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import java.net.URL?>
+
+<VBox xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      VBox.vgrow="ALWAYS"
+      style="-fx-background-color: transparent;">
+
+    <stylesheets>
+        <URL value="@mindcare-theme.css" />
+    </stylesheets>
+
+    <padding>
+        <Insets top="28" right="28" bottom="28" left="28" />
+    </padding>
+
+    <!-- ═══════════ HEADER CARD ═══════════ -->
+    <VBox spacing="4"
+          style="-fx-background-color: white;
+                 -fx-background-radius: 16; -fx-border-radius: 16;
+                 -fx-border-color: #e2e8f0; -fx-border-width: 1;
+                 -fx-padding: 24 28;
+                 -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.07), 18, 0, 0, 6);">
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="Student Reservations"
+                       style="-fx-font-size: 22px; -fx-font-weight: 800; -fx-text-fill: #0f172a;" />
+                <Label text="View which students reserved each event."
+                       style="-fx-font-size: 13px; -fx-text-fill: #64748b;" />
+            </VBox>
+            <Button text="↺  Refresh" onAction="#handleRefreshReservations"
+                    style="-fx-background-color: #6366f1; -fx-text-fill: white;
+                           -fx-font-weight: 700; -fx-font-size: 13px;
+                           -fx-background-radius: 10; -fx-border-radius: 10;
+                           -fx-padding: 11 22 11 22; -fx-cursor: hand;
+                           -fx-effect: dropshadow(gaussian, rgba(99,102,241,0.4), 10, 0, 0, 4);" />
+        </HBox>
+    </VBox>
+
+    <!-- Spacer -->
+    <Region style="-fx-min-height: 18; -fx-max-height: 18;" />
+
+    <!-- ═══════════ LIST CARD ═══════════ -->
+    <VBox VBox.vgrow="ALWAYS"
+          style="-fx-background-color: white;
+                 -fx-background-radius: 16; -fx-border-radius: 16;
+                 -fx-border-color: #e2e8f0; -fx-border-width: 1;
+                 -fx-padding: 20;
+                 -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.07), 18, 0, 0, 6);">
+        <Label text="RESERVATION LIST"
+               style="-fx-font-size: 11px; -fx-font-weight: 800;
+                      -fx-text-fill: #94a3b8; -fx-padding: 0 0 12 4;" />
+        <Separator />
+        <Region style="-fx-min-height: 10; -fx-max-height: 10;" />
+        <ListView fx:id="reservationListView"
+                  VBox.vgrow="ALWAYS"
+                  style="-fx-background-color: transparent;
+                         -fx-control-inner-background: transparent;
+                         -fx-border-color: transparent;
+                         -fx-padding: 4;
+                         -fx-font-size: 14px;" />
+    </VBox>
+
+</VBox>
